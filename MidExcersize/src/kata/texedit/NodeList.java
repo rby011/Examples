@@ -1,5 +1,5 @@
 package kata.texedit;
-
+   
 public class NodeList {
 	NodeList nextlist;
 	NodeList prevlist;
