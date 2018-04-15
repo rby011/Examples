@@ -1,4 +1,4 @@
-package kata.texedit;
+package example.texedit;
 
 public class UserCode {
 	static final int INITIAL = 100;

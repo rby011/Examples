@@ -1,4 +1,4 @@
-package kata.texedit;
+package example.texedit;
 
 import java.util.Scanner;
 
