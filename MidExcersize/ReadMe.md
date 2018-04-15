@@ -1,6 +1,6 @@
 # examples
-##1. Text Editor
+## 1. Text Editor
 
-##2. Fashion
+## 2. Fashion
 
-##3. Restore
+## 3. Restore
