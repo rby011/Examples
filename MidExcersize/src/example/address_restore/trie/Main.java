@@ -1,4 +1,4 @@
-package example.address_restore;
+package example.address_restore.trie;
 
 import java.util.Scanner;
 

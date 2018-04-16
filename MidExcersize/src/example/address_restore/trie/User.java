@@ -1,4 +1,4 @@
-package example.address_restore;
+package example.address_restore.trie;
 
 public class User {
 	static final int ALLOWED_CODE_COUNT = 32;
@@ -7,8 +7,8 @@ public class User {
 	static final int ASCII_LENGTH = 256;
 
 	static int N = 0;
-	static byte[] l2i_table = new byte[ASCII_LENGTH];
-	static char[] i2l_table = new char[ALLOWED_CODE_COUNT];
+	static byte[] l2i_table = new byte[ASCII_LENGTH];// letter to index
+	static char[] i2l_table = new char[ALLOWED_CODE_COUNT];// index to letter
 
 	static Trie code_table = new Trie();
 
