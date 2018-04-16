@@ -3,18 +3,23 @@ package example.address_restore.hash;
 public class User {
 
 	static final int ALLOWED_CODE_COUNT = 32;
-	static final int MIN_CHAR = 33, MAX_CHAR = 126;
-	static boolean err_map[][] = null;
+	static final int ALLOWED_MIN_CHAR = 33, ALLOWED_MAX_CHAR = 126;
+	// 8 비트 문자 간의 1비트 오류로 발생할 수 있는 차이 목록
+	static final int possible_diff[] = { 1, 2, 4, 8, 16, 32, 64, 128 };
+
 	static boolean alw_code[] = null;
 
+	static boolean err_map[][] = null;
 	static AddressTable addr_table = null;
 
 	// 이번 TC 에서 허용된 문자 목록
 	static void getAllowCode(char code[]) {
+
 		// ALLOWED LETTER(CODE) INDEX TABLE
-		alw_code = new boolean[MAX_CHAR + 1];
-		for (int i = 0; i < ALLOWED_CODE_COUNT; i++)
+		alw_code = new boolean[ALLOWED_MAX_CHAR + 1];
+		for (int i = 0; i < ALLOWED_CODE_COUNT; i++) {
 			alw_code[code[i]] = true;
+		}
 
 		// POSSIBLE EREOR CASE GRAPH
 		initializeErrMap();
@@ -22,15 +27,18 @@ public class User {
 
 	// raw 축은 error code 이고, column 축은 possible restored code
 	static void initializeErrMap() {
-		err_map = new boolean[MAX_CHAR + 1][MAX_CHAR + 1];
-		for (int ecode = MIN_CHAR; ecode <= MAX_CHAR; ecode++) {
-			for (int pcode = MIN_CHAR; alw_code[pcode] && pcode <= MAX_CHAR; pcode++) {
+		err_map = new boolean[ALLOWED_MAX_CHAR + 1][ALLOWED_MAX_CHAR + 1];
+		for (int ecode = ALLOWED_MIN_CHAR; ecode <= ALLOWED_MAX_CHAR; ecode++) {
+			for (int pcode = ALLOWED_MIN_CHAR; alw_code[pcode] && pcode <= ALLOWED_MAX_CHAR; pcode++) {
 				int diff = ecode - pcode;
 				if (diff < 0)
 					diff = diff * -1;
-				if (diff == 1 || diff == 2 || diff == 4 || diff == 8 || diff == 16 || diff == 32 || diff == 64
-						|| diff == 128)
-					err_map[ecode][pcode] = true;
+				for (int p = 0; p < possible_diff.length; p++) {
+					if (possible_diff[p] == diff) {
+						err_map[ecode][pcode] = true;
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -61,7 +69,7 @@ public class User {
 		}
 
 		char ec = errcode[depth];
-		for (int i = MIN_CHAR; i <= MAX_CHAR; i++) {
+		for (int i = ALLOWED_MIN_CHAR; i <= ALLOWED_MAX_CHAR; i++) {
 			if (err_map[ec][i]) {
 				predcode[depth] = (char) i;
 				boolean ret = try_restore(errcode, predcode, depth + 1);
