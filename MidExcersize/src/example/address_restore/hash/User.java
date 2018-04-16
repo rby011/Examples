@@ -43,7 +43,13 @@ public class User {
 	}
 
 	static void restore(char errcode[], char prediction[]) {
-		try_restore(errcode, prediction, 0);
+		if (addr_table.get(errcode) == null) {
+			try_restore(errcode, prediction, 0);
+		} else {// 이미 유효 주소 목록에 포함된 것이라면
+			prediction = errcode;
+			for (int i = 0; i < prediction.length; i++)
+				prediction[i] = errcode[i];
+		}
 	}
 
 	static boolean try_restore(char errcode[], char predcode[], int depth) {
