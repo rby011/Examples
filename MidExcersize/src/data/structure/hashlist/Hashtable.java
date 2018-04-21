@@ -13,17 +13,18 @@ package data.structure.hashlist;
  * 수평 방향은 collision 발생으로 인한 아이템을 추가하는 것으로 구별함
  * </PRE>
  */
-public class HashTable {
+public class Hashtable {
 
 	// capacity = n^2 + n + 41
 	int capacity = 0;
 
 	ItemList table[] = null;
 
-	public HashTable(int capacity) {
+	public Hashtable(int capacity) {
 		table = new ItemList[capacity];
 		for (int i = 0; i < table.length; i++)
 			table[i] = new ItemList();
+		this.capacity = capacity;
 	}
 
 	public void put(char key[], int id) {
@@ -44,7 +45,7 @@ public class HashTable {
 				return;
 			}
 			p_col_list = col_list;
-			col_list = col_list.next;
+			col_list = col_list.lnext;
 		}
 
 		// ADD ITEMLIST AT COLLISION
@@ -54,7 +55,7 @@ public class HashTable {
 			n_item_list.addItemToHead(new Item(id, key));
 
 			// ATTACH A NEW KIND OF LIST ITEM AT THE TAIL
-			p_col_list.next = n_item_list;
+			p_col_list.lnext = n_item_list;
 		}
 	}
 
@@ -64,11 +65,11 @@ public class HashTable {
 
 		ItemList list = table[index];
 		while (list != null) {
-			if(list.head.equalto(key))
+			if (list.head.equalto(key))
 				return list;
-			list = list.next;
+			list = list.lnext;
 		}
-		
+
 		return null;
 	}
 
@@ -83,6 +84,33 @@ public class HashTable {
 		}
 		return hashcode;
 	}
+
+	public void printTable() {
+		for (int c = 0; c < this.capacity; c++) {
+			ItemList list = table[c];
+			System.out.println("# INDEX - " + c);
+			int itemid = 0;
+
+			while (list != null) {
+				Item item = list.head;
+
+				System.out.println("## ITEM LIST - " + (itemid++));
+
+				while (item != null) {
+					char name[] = item.name;
+					int id = item.id;
+
+					System.out.print(" - " + id + " ");
+					System.out.print(new String(name) + " ");
+					System.out.println();
+
+					item = item.next;
+				}
+				list = list.lnext;
+			}
+
+		}
+	}
 }
 
 class ItemList {
@@ -90,7 +118,7 @@ class ItemList {
 	Item head;
 
 	// at the collision case
-	ItemList next;
+	ItemList lnext;
 
 	public void addItemToHead(Item item) {
 		if (head == null) {
@@ -110,7 +138,8 @@ class Item {
 	Item next;
 
 	public Item(int id, char name[]) {
-
+		this.id = id;
+		this.name = name;
 	}
 
 	public boolean equalto(char iname[]) {
