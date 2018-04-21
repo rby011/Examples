@@ -2,6 +2,20 @@ package example.zombyhunter;
 
 import java.util.Scanner;
 
+/*
+ * <PRE>
+1
+8
+0 0 0 0 0 0 0 0
+0 0 0 0 0 10 0 0 
+0 0 1 0 10 10 10 0
+0 0 0 0 0 10 10 0
+0 0 0 0 0 0 10 0
+0 0 0 0 0 0 10 0
+0 0 0 0 0 0 0 0 
+0 0 0 0 0 0 0 0 
+ * </PRE>
+ */
 public class Main {
 	static final int SHOT_MAX = 10;
 	static final int MAP_MAX = 100;
@@ -13,8 +27,8 @@ public class Main {
 		int i = 0, j = 0;
 		// target init
 		for (i = 0; i < SHOT_MAX; i++) {
-			shot[i][0] = -1;// x
-			shot[i][1] = 1;// y
+			shot[i][0] = -1;// x, col
+			shot[i][1] = 1;// y, raw
 		}
 		// map init
 		for (i = 0; i < MAP_MAX; i++)
@@ -28,10 +42,6 @@ public class Main {
 	}
 
 	public static void main(String args[]) {
-
-		double a = 1.653;
-		System.out.println((int)a);
-		
 		Scanner scan = new Scanner(System.in);
 		int TC, N, score = 0, total_score = 0;
 
