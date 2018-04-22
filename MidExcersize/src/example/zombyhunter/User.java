@@ -1,203 +1,139 @@
 package example.zombyhunter;
 
 public class User {
-	static int hraw, hcol;// hunter coordinate
+	// hunter coordinate
+	static int hunt_y, hunt_x;
 
-	static int zbidx;
-	static int zbcount;
-	// in order to check duplication when creating Zomby instance
+	static final int X = 0;
+	static final int Y = 0;
+	static final double NaN = Double.MAX_VALUE;
+
+	// index table : /w coordinate, /w index
 	static Zomby zbcoordtable[][] = null;
 	static Zomby zbidxtable[] = null;
-	static int zbhptable[] = null;
 
-	static MaxHeap mheap = null;
+	// priority queue
+	static MxShotQueue mxpshotque = null;
 
-	// GIVEN : map[MAP_MAX][MAP_MAX]
-	// GIVEN : shot[SHOT_MAX ][2] / [..][0] : col / [..][1] : raw
+	// target coordinate [..][0] = x(col), [..][1] =y(raw)
+	static int tgcoord[][] = null;
+
 	public static boolean getTarget(int map_size, int map[][], int shot[][]) {
-		zbidx = 0;
-		zbcount = 0;
 
-		/*
-		 * Huddle, Zomby
-		 */
+		int zbidx_seed = 0, tgidx = 0;
+
 		zbcoordtable = new Zomby[map_size][map_size];
 		zbidxtable = new Zomby[map_size * map_size];
-		zbhptable = new int[map_size * map_size];
+		tgcoord = new int[map_size * 2 + (map_size - 2) * 2][2];
+		mxpshotque = new MxShotQueue(map_size * 2 + (map_size - 2) * 2);
 
-		for (int r = 1; r < map_size - 1; r++) {
-			for (int c = 1; c < map_size - 1; c++) {
-				if (map[r][c] == 1) {// hunter
-					hraw = r;
-					hcol = c;
-				} else if (map[r][c] >= 10) {
-					Zomby zb = new Zomby(zbidx, r, c, map[r][c]);
-					zbidxtable[zbidx] = zb;
-					zbcoordtable[r][c] = zb;
-					zbhptable[zbidx] = map[r][c];
-					
-					zbcount = zbcount + 1;
-					zbidx = zbidx + 1;
-				}
-			}
-		}
-
-		mheap = new MaxHeap(map_size * map_size + 1, zbcount, zbidxtable,zbhptable);
-		/*
-		 * Shot - UP, DOWN, LEFT, RIGHT
+		/**
+		 * EXTRACT HUNTER'S & ZOMBY'S COORDINATE
 		 */
-		// UP : sraw is 0
-		for (int i = 0; i < map_size; i++) {
-			double gradient = getGradient(0, (double) i, hraw, hcol);
-			double bias = getBias(0, (double) i, hraw, hcol);
-
-			Shot shoot = new Shot(0, i);
-
-			if (gradient == Double.MAX_VALUE) {
-				for (int sr = 1; sr < hraw; sr++) {
-					if (map[sr][hcol] >= 10) {
-						addZombyIdx(shoot, map, sr, hcol);
-					}
+		for (int y = 0; y < map_size; y++) {
+			for (int x = 0; x < map_size; x++) {
+				if (map[y][x] == 1) {// hunter
+					hunt_y = y;
+					hunt_x = x;
+				} else if (map[y][x] >= 10) {// zomby
+					Zomby zb = new Zomby(zbidx_seed, y, x, map[y][x]);
+					zbidxtable[zbidx_seed] = zb;
+					zbcoordtable[y][x] = zb;
 				}
-				mheap.enqueue(shoot);
-				continue;
+				// all shootable coordinate
+				if (y == 0 || y == map_size - 1) {
+					tgcoord[tgidx][X] = x;
+					tgcoord[tgidx][Y] = y;
+					tgidx++;
+				}
+				if (y > 0 && y < map_size - 1 && (x == 0 || x == map_size - 1)) {
+					tgcoord[tgidx][X] = x;
+					tgcoord[tgidx][Y] = y;
+				}
 			}
+		}
 
-			int min = 0, max = 0;
-			if (i > hcol) {
-				min = hcol + 1;
-				max = i - 1;
+		/**
+		 * CONSTRUCT VALID-SHOT (WITH POSSILBY KILLING ZOMBY) LIST
+		 */
+		for (int t = 0; t < tgidx; t++) {
+			int tgy = tgcoord[t][Y], tgx = tgcoord[t][X];
+			int hty = hunt_y, htx = hunt_x;
+
+			int startx = -1, endx = -1, boundx = -1;
+
+			if (tgx < htx) {
+				startx = 0;
+				endx = htx - 1;
+			} else if (tgx > htx) {
+				startx = htx + 1;
+				endx = tgx;
 			} else {
-				min = i + 1;
-				max = hcol - 1;
+				boundx = htx;
 			}
 
-			for (int sc = min; sc <= max; sc++) {
-
-				double raw = gradient * (double) sc - bias;
-				int floor_raw = (int) raw;
-				int ceiling_raw = floor_raw;
-				if (raw - (double) floor_raw > 0.0d)
-					ceiling_raw = floor_raw + 1;
-
-				if (map[floor_raw][sc] >= 10)
-					addZombyIdx(shoot, map, floor_raw, sc);
-				if (floor_raw != ceiling_raw && map[ceiling_raw][sc] >= 10)
-					addZombyIdx(shoot, map, ceiling_raw, sc);
-
-			}
-
-			mheap.enqueue(shoot);
-		}
-
-		// DOWN
-		for (int i = 0; i < map_size; i++) {
-
-			double gradient = getGradient(map_size - 1, (double) i, hraw, hcol);
-			double bias = getBias(map_size - 1, (double) i, hraw, hcol);
-
-			Shot shoot = new Shot(map_size, i);
-
-			if (gradient == Double.MAX_VALUE) {
-				for (int sr = hraw + 1; sr < map_size; sr++) {
-					if (map[sr][hcol] >= 10) {
-						addZombyIdx(shoot, map, sr, hcol);
-					}
-				}
-				mheap.enqueue(shoot);
+			if (boundx != -1) {
 				continue;
 			}
 
-			int min = 0, max = 0;
-			if (i > hcol) {
-				min = hcol + 1;
-				max = i - 1;
+			// extract 1st order equation
+			double gradient = getgradient(hty, htx, tgy, (double) tgx);
+			double bias = getbias(hty, htx, tgy, (double) tgx);
+
+			// shot that is possibly added to the shot table
+			boolean needtoaddshot = false;
+			Shot pshot = new Shot(tgy, tgx);
+
+			if (gradient == NaN) {
+				int starty = 0, endy = 0;
+				if (tgy > hty) {
+					starty = hty + 1;
+					endy = map.length - 1;
+				} else if (tgy < hty) {
+					starty = 1;
+					endy = tgy - 1;
+				} else {
+					// error in target coordinate extraction
+				}
+
+				for (int y = starty; y <= endy; y++) {
+					if (zbcoordtable[y][tgx] != null) {
+						ZbIndex zbidx = new ZbIndex(zbcoordtable[y][tgx].zid);
+						pshot.zidxlist.addZombyToHead(zbidx);
+						needtoaddshot = true;
+					}
+				}
 			} else {
-				min = i + 1;
-				max = hcol - 1;
-			}
+				for (int x = startx; x <= endx; x++) {
 
-			for (int sc = min; sc <= max; sc++) {
+					double dy = gety(gradient, bias, (double) x);
 
-				double raw = gradient * (double) sc - bias;
-				int floor_raw = (int) raw;
-				int ceiling_raw = floor_raw + 1;
+					// iy1, iy2 coordinate to check zomby existance
+					int iy1 = (int) dy;
+					int iy2 = -1;
+					if ((double) iy1 - dy != 0)
+						iy2 = iy1 + 1;
 
-				if (map[floor_raw][sc] >= 10)
-					addZombyIdx(shoot, map, floor_raw, sc);
-				if (map[ceiling_raw][sc] >= 10)
-					addZombyIdx(shoot, map, ceiling_raw, sc);
-
-			}
-			mheap.enqueue(shoot);
-
-		}
-
-		// LEFT
-		for (int i = 1; i < map_size - 1; i++) {
-
-			double gradient = getGradient((double) i, 0, hraw, hcol);
-			double bias = getBias((double) i, 0, hraw, hcol);
-
-			Shot shoot = new Shot(i, 0);
-
-			if (gradient == 0.0d) {
-				for (int sc = 1; sc < hcol; sc++) {
-					if (map[hraw][sc] >= 10) {
-						addZombyIdx(shoot, map, hraw, sc);
+					if (zbcoordtable[iy1][x] != null) {
+						ZbIndex zbidx = new ZbIndex(zbcoordtable[iy1][x].zid);
+						pshot.zidxlist.addZombyToHead(zbidx);
+						needtoaddshot = true;
+					} else {
+						// error!! when making zbindex(coord) table
+					}
+					if (zbcoordtable[iy2][x] != null) {
+						ZbIndex zbidx = new ZbIndex(zbcoordtable[iy2][x].zid);
+						pshot.zidxlist.addZombyToHead(zbidx);
+						needtoaddshot = true;
+					} else {
+						// error!! when making zbindex(coord) table
 					}
 				}
-				mheap.enqueue(shoot);
-				continue;
 			}
 
-			for (int sc = 1; sc <= hcol - 1; sc++) {
-
-				double raw = gradient * (double) sc - bias;
-				int floor_raw = (int) raw;
-				int ceiling_raw = floor_raw + 1;
-
-				if (map[floor_raw][sc] >= 10)
-					addZombyIdx(shoot, map, floor_raw, sc);
-				if (map[ceiling_raw][sc] >= 10)
-					addZombyIdx(shoot, map, ceiling_raw, sc);
-
-			}
-			mheap.enqueue(shoot);
-
-		}
-
-		// RIGHT
-		for (int i = 1; i < map_size - 1; i++) {
-
-			double gradient = getGradient((double) i, map_size - 1, hraw, hcol);
-			double bias = getBias((double) i, map_size - 1, hraw, hcol);
-
-			Shot shoot = new Shot(i, map_size - 1);
-
-			if (gradient == 0.0d) {
-				for (int sc = hcol + 1; sc < map_size - 1; sc++) {
-					if (map[hraw][sc] >= 10) {
-						addZombyIdx(shoot, map, hraw, sc);
-					}
-				}
-				mheap.enqueue(shoot);
-				continue;
-			}
-
-			for (int sc = hcol + 1; sc <= map_size - 1; sc++) {
-
-				double raw = gradient * (double) sc - bias;
-				int floor_raw = (int) raw;
-				int ceiling_raw = floor_raw + 1;
-
-				if (map[floor_raw][sc] >= 10)
-					addZombyIdx(shoot, map, floor_raw, sc);
-				if (map[ceiling_raw][sc] >= 10)
-					addZombyIdx(shoot, map, ceiling_raw, sc);
-
-			}
-			mheap.enqueue(shoot);
+			// add shot when this shot can decrease zomby's hp
+			if (needtoaddshot)
+				mxpshotque.enqueue(pshot);
 
 		}
 
@@ -205,174 +141,68 @@ public class User {
 	}
 
 	public static int getScore(int size, int map[][], int shot[][]) {
-		int shootcnt = 0;
-
-		while (!mheap.isempty() && shootcnt < shot.length) {
-			mheap.printHeap();
-			Shot shoot = mheap.dequeue();
-			int raw = shoot.sraw;// y, 1
-			int col = shoot.scol;// x, 0
-			shot[shootcnt][0] = col;
-			shot[shootcnt][1] = raw;
-			shootcnt = shootcnt + 1;
-			System.out.println("(x,y) = " + col + "," + raw);
-			mheap.printHeap();
-		}
-
-		int zbcnt = mheap.zcount;
-
-		return (zbcnt * (-1000)) + ((shot.length - shootcnt) * 100 + 100);
+		return 0;
 	}
 
-	public static void addZombyIdx(Shot shoot, int map[][], int raw, int col) {
-		Zomby zomby = zbcoordtable[raw][col];
-		ZbIndex zbidx = new ZbIndex();
-		zbidx.zbidx = zomby.zid;
-		shoot.addZomby(zbidx);
+	public static double gety(double gradient, double bias, double x) {
+		return gradient * x - bias;
 	}
 
-	public static double getGradient(double y1, double x1, double y2, double x2) {
-		if (x1 == x2)
-			return Double.MAX_VALUE;
+	public static double getgradient(double y1, double x1, double y2, double x2) {
+		if (x2 - x1 == 0)
+			return NaN;
 		return (y2 - y1) / (x2 - x1);
 	}
 
-	public static double getBias(double y1, double x1, double y2, double x2) {
-		if (x1 == x2)
-			return Double.MAX_VALUE;
-		return ((x1 * y2 - x2 * y1) / (x2 - x1));
+	public static double getbias(double y1, double x1, double y2, double x2) {
+		if (x2 - x1 == 0)
+			return NaN;
+		return (x1 * y2 - x2 * y1) / (x2 - x1);
 	}
 
 }
 
-class MaxHeap {
+class MxShotQueue {
+	Shot max;
+	Shot shottable[] = null;
+	int size = 0;
 
-	Shot tree[] = null;
-	int size;
-	int zcount = 0;
-
-	Zomby zbidxtable[] = null;
-	int zbhptable[] = null;
-	
-	public MaxHeap(int capacity, int zcount, Zomby zbidxtable[], int zbhptable[]) {
-		this.tree = new Shot[capacity + 1];
-		this.size = 0;
-		this.zcount = zcount;
-		this.zbidxtable = zbidxtable;
-		this.zbhptable = zbhptable;
+	MxShotQueue(int capacity) {
+		this.max = null;
+		this.shottable = new Shot[capacity];
 	}
 
+	// just keep this.max
 	public void enqueue(Shot shot) {
-		int nindex = ++size;
-		tree[nindex] = shot;
+		shottable[size++] = shot;
 
-		while (nindex > 1) {
-			int pindex = nindex / 2;
-			if (tree[pindex].zcnt < tree[nindex].zcnt) {
-				Shot tmp = tree[pindex];
-				tree[pindex] = tree[nindex];
-				tree[nindex] = tmp;
-
-				nindex = pindex;
-			} else {
-				break;
-			}
+		if (max == null) {
+			max = shot;
+			return;
 		}
+
+		if (shot.zcnt > max.zcnt)
+			this.max = shot;
+
 	}
 
+	// change this.max when dequeing the max
 	public Shot dequeue() {
-		if (size == 0)
-			return null;
 
-		Shot max = tree[1];
-
-		ZbIndex zbidx = max.zidxlist.head;
-		while (zbidx != null) {
-			Zomby zomby = this.zbidxtable[zbidx.zbidx];
-			if (zomby.hp >= 10) {
-				zomby.hp = zomby.hp - 10;
-				zbhptable[zbidx.zbidx] = zomby.hp;
-				if (zomby.hp == 0) {
-					max.zcnt = max.zcnt - 1;
-					zcount = zcount - 1;
-				}
-			}
-			zbidx = zbidx.next;
-		}
-
-		// HEAP 을 사용하는 의미가 없음. 이 루프에서 MAX 를 얻을 수 있음!!! 어떻게 풀어야 하나??
-		for (int i = 2; i <= this.size; i++) {
-			zbidx = tree[i].zidxlist.head;
-			while (zbidx != null) {
-				if (zbhptable[zbidx.zbidx] == 0) {
-					tree[i].zcnt--;
-				}
-				zbidx = zbidx.next;
-			}
-		}
-
-		if (max.zcnt == 0) {
-			tree[1] = tree[size];
-			size = size - 1;
-		}
-
-		maxheapify(1);
-
-		return max;
+		return this.max;
 	}
 
-	public boolean isempty() {
-		return this.size == 0;
-	}
-
-	public void maxheapify(int index) {
-		int lcindex = index * 2;
-		int rcindex = lcindex + 1;
-
-		boolean haslchild = lcindex <= size;
-		boolean hasrchild = rcindex <= size;
-
-		if (!haslchild) {
-			return;
-		}
-
-		int maxindex = lcindex;
-		if (hasrchild && tree[lcindex].zcnt > tree[rcindex].zcnt) {
-			maxindex = lcindex;
-		}
-
-		if (tree[index].zcnt >= tree[maxindex].zcnt)
-			return;
-
-		Shot tmp = tree[index];
-		tree[index] = tree[maxindex];
-		tree[maxindex] = tmp;
-
-		maxheapify(maxindex);
-	}
-
-	public void printHeap() {
-		int index = 1;
-		while (true) {
-			Shot shot = tree[index];
-			if (shot == null)
-				break;
-			System.out.println("" + index + " : " + shot.zcnt);
-			index++;
-		}
-	}
 }
 
 class Shot {
-	int sraw, scol;
-	int reqhp;
+	int tg_x, tg_y;
 	int zcnt;
 
 	ZbIndexList zidxlist;
 
-	public Shot(int sraw, int scol) {
-		this.sraw = sraw;
-		this.scol = scol;
+	public Shot(int y, int x) {
+		this.tg_y = y;
+		this.tg_x = x;
 		this.zidxlist = new ZbIndexList();
 	}
 
@@ -398,16 +228,20 @@ class ZbIndexList {
 class ZbIndex {
 	int zbidx;
 	ZbIndex next;
+
+	ZbIndex(int zbidx) {
+		this.zbidx = zbidx;
+	}
 }
 
 class Zomby {
 	int zid;
-	int zraw, zcol, hp;
+	int zb_x, zb_y, hp;
 
-	public Zomby(int zid, int raw, int col, int hp) {
+	public Zomby(int zid, int y, int x, int hp) {
 		this.zid = zid;
-		this.zraw = raw;
-		this.zcol = col;
+		this.zb_x = x;
+		this.zb_y = y;
 		this.hp = hp;
 	}
 }
