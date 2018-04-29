@@ -43,20 +43,19 @@ public class UserSolution {
 			solution.create(mid, y, x, height, width, str);
 		}
 
-		// solution.move(3, 2, 5);
-		// solution.move(10, 6, 6);
-		// solution.move(9, 6, 5);
-		// solution.move(5, 5, 5);
-		// solution.getMemo(3, 2);
-		// solution.select(3);
+		solution.move(3, 2, 5);
+		solution.move(10, 6, 6);
+		solution.move(9, 6, 5);
+		solution.move(5, 5, 5);
+		solution.select(3);
 
-		// solution.move(3, 3, 3);
+		solution.move(3, 3, 3);
 		// solution.printmidxtable();
 		// solution.getScreenContext(2, 3, null);
 		// solution.getScreenContext(1, 1, null);
 
 		// solution.select(9);
-		solution.printmidxtable();
+		// solution.printmidxtable();
 		System.out.println();
 		char nstr[] = { '#', '#', '\0' };
 		solution.change(3, 2, 5, nstr);
@@ -129,6 +128,8 @@ public class UserSolution {
 
 			for (int ry = y; ry < y + height; ry++) {
 				for (int rx = x; rx < x + width; rx++) {
+					if(midx_table[ry][rx]==null)
+						midx_table[ry][rx] = new MemoIndexList();
 					midx_table[ry][rx].addMemoIndexToHead(new MemoIndex(mid));
 				}
 			}
