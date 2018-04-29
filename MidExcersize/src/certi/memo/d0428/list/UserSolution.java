@@ -49,17 +49,21 @@ public class UserSolution {
 		// solution.move(5, 5, 5);
 		// solution.getMemo(3, 2);
 		// solution.select(3);
-		
-		
-		solution.move(3, 3, 3);
+
+		// solution.move(3, 3, 3);
+		// solution.printmidxtable();
+		// solution.getScreenContext(2, 3, null);
+		// solution.getScreenContext(1, 1, null);
+
+		// solution.select(9);
 		solution.printmidxtable();
-		
-		solution.getScreenContext(2, 3, null);
-		solution.getScreenContext(1, 1, null);
-		
-		solution.select(9);
+		System.out.println();
+		char nstr[] = { '#', '#', '\0' };
+		solution.change(3, 2, 5, nstr);
 		solution.printmidxtable();
-		solution.getScreenContext(1, 1, null);
+
+		solution.getScreenContext(2, 2, null);
+
 		scan.close();
 
 		// solution.create(0, y, x, height, width, str);
@@ -133,11 +137,18 @@ public class UserSolution {
 		}
 	}
 
-	public void change(int mid, int nheight, int nwidth) {
+	public void change(int mid, int nheight, int nwidth, char nstr[]) {
 		Memo memo = m_table[mid];
-		if (memo != null && memo.height != nheight && memo.width != nwidth) {
-			int hdiff = memo.height - nheight;
-			int wdiff = memo.width - nwidth;
+
+		// 1. MIDX TABLE UPDTE
+		if (memo != null && !(memo.height == nheight && memo.width == nwidth)) {
+			int hdiff = nheight - memo.height;
+			int wdiff = nwidth - memo.width;
+
+			if (memo.height + hdiff + memo.y >= midx_table.length)
+				return;
+			if (memo.width + wdiff + memo.x >= midx_table.length)
+				return;
 
 			if (hdiff < 0 && wdiff < 0) {
 				int sx = memo.x + memo.width + wdiff;
@@ -159,12 +170,17 @@ public class UserSolution {
 							midx_table[y][x].removeMemoIndex(mid);
 					}
 				}
+
 			} else if (hdiff > 0 && wdiff > 0) {
 				int sx = memo.x + memo.width;
 				int ex = memo.x + memo.width + wdiff;
 
-				for (int y = memo.y; y < memo.y + memo.height; y++) {
+				select(mid);
+
+				for (int y = memo.y; y < memo.y + nheight; y++) {
 					for (int x = sx; x < ex; x++) {
+						if (midx_table[y][x] == null)
+							midx_table[y][x] = new MemoIndexList();
 						midx_table[y][x].addMemoIndexToHead(new MemoIndex(mid));
 					}
 				}
@@ -174,16 +190,19 @@ public class UserSolution {
 
 				for (int y = sy; y < ey; y++) {
 					for (int x = memo.x; x < memo.x + memo.width; x++) {
+						if (midx_table[y][x] == null)
+							midx_table[y][x] = new MemoIndexList();
 						midx_table[y][x].addMemoIndexToHead(new MemoIndex(mid));
 					}
 				}
-			} else if (hdiff > 0 && wdiff < 0) {
+			} else if (hdiff >= 0 && wdiff <= 0) {
 				int sx = memo.x + memo.width + wdiff;
 				int ex = memo.x + memo.width;
 
 				for (int y = memo.y; y < memo.y + memo.height; y++) {
 					for (int x = sx; x < ex; x++) {
-						midx_table[y][x].removeMemoIndex(mid);
+						if (midx_table[y][x] != null)
+							midx_table[y][x].removeMemoIndex(mid);
 					}
 				}
 
@@ -192,15 +211,19 @@ public class UserSolution {
 
 				for (int y = sy; y < ey; y++) {
 					for (int x = memo.x; x < memo.x + memo.width + wdiff; x++) {
+						if (midx_table[y][x] == null)
+							midx_table[y][x] = new MemoIndexList();
 						midx_table[y][x].addMemoIndexToHead(new MemoIndex(mid));
 					}
 				}
-			} else if (hdiff < 0 && wdiff > 0) {
+			} else if (hdiff <= 0 && wdiff >= 0) {
 				int sx = memo.x + memo.width;
 				int ex = memo.x + memo.width + wdiff;
 
 				for (int y = memo.y; y < memo.y + memo.height + hdiff; y++) {
 					for (int x = sx; x < ex; x++) {
+						if (midx_table[y][x] == null)
+							midx_table[y][x] = new MemoIndexList();
 						midx_table[y][x].addMemoIndexToHead(new MemoIndex(mid));
 					}
 				}
@@ -210,7 +233,8 @@ public class UserSolution {
 
 				for (int y = sy; y < ey; y++) {
 					for (int x = memo.x; x < memo.x + memo.width; x++) {
-						midx_table[y][x].removeMemoIndex(mid);
+						if (midx_table[y][x] != null)
+							midx_table[y][x].removeMemoIndex(mid);
 					}
 				}
 			}
@@ -218,6 +242,18 @@ public class UserSolution {
 		} else {
 			// error??
 		}
+
+		// 2. CHANGE PROPERTIES
+		memo.height = nheight;
+		memo.width = nwidth;
+		memo.str = new char[100];// need to modify so as not to mem alloc
+		int i = 0;
+		for (; nstr[i] != '\0'; i++)
+			memo.str[i] = nstr[i];
+		memo.str[i] = '\0';
+
+		// 3. MOVE FIRST
+		select(mid);
 	}
 
 	// res : 5x5
@@ -229,14 +265,14 @@ public class UserSolution {
 					System.out.print("_");
 					continue;
 				}
-				if(midx_table[ry][rx] == null) {
+				if (midx_table[ry][rx] == null) {
 					// res[ry][rx] = '\0';
 					System.out.print("_");
 					continue;
 				}
-				
+
 				MemoIndex firstidx = midx_table[ry][rx].head;
-				
+
 				if (firstidx == null) {
 					// res[ry][rx] = '\0';
 					System.out.print("_");
@@ -263,9 +299,9 @@ public class UserSolution {
 		int N = midx_table.length;
 		for (int y = 0; y < N; y++) {
 			for (int x = 0; x < N; x++) {
-				if (midx_table[y][x] != null) {
-					System.out.print(midx_table[y][x].head.mid+"\t");
-				}else {
+				if (midx_table[y][x] != null && midx_table[y][x].head != null) {
+					System.out.print(midx_table[y][x].head.mid + "\t");
+				} else {
 					System.out.print("_\t");
 				}
 			}
