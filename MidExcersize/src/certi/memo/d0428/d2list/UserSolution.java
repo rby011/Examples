@@ -1,4 +1,4 @@
-package certi.memo.d0428.list;
+package certi.memo.d0428.d2list;
 
 import java.util.Scanner;
 
