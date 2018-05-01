@@ -1,6 +1,83 @@
 package cert.memo.d0428.d1list;
 
+import java.util.Scanner;
+
+/*<PRE>
+12
+0 1 1 4 4 0000000000000000
+1 5 3 5 3 111111111111111
+2 0 6 8 4 22222222222222222222222222222222
+3 2 2 2 2 3333
+4 6 4 3 2 444444
+5 1 6 4 4 5555555555555555
+6 5 7 3 3 666666666
+7 2 7 2 2 7777
+8 1 2 3 3 888888888
+9 2 3 3 3 999999999
+10 1 3 2 2 AAAA
+11 4 5 1 1 B
+
+</PRE> */
 public class UserSolution {
+
+	public static void main(String args[]) {
+		UserSolution.init(10);
+
+		Scanner scan = new Scanner(System.in);
+
+		int N = scan.nextInt();
+		for (int n = 0; n < N; n++) {
+
+			int mid = scan.nextInt();
+			int y = scan.nextInt();
+			int x = scan.nextInt();
+			int height = scan.nextInt();
+			int width = scan.nextInt();
+			char str[] = new char[100];
+			char tstr[] = scan.next().toCharArray();
+			for (int i = 0; i < tstr.length; i++)
+				str[i] = tstr[i];
+
+			UserSolution.create(mid, y, x, height, width, str);
+		}
+
+		// UserSolution.move(3, 2, 5);
+		// UserSolution.move(10, 6, 6);
+		// UserSolution.move(9, 6, 5);
+		// UserSolution.move(5, 5, 5);
+		// UserSolution.select(3);
+		// UserSolution.move(3, 3, 3);
+
+		char res[][] = new char[5][5];
+		print(UserSolution.mlist);
+		UserSolution.getscreencontext(2, 3, res);
+		print(res);
+		// UserSolution.getscreencontext(1, 1, null);
+
+		// UserSolution.select(9);
+		// char nstr[] = { '#', '#', '\0' };
+		// UserSolution.change(3, 2, 5, nstr);
+		// UserSolution.getscreencontext(2, 2, null);
+
+		scan.close();
+	}
+
+	public static void print(char res[][]) {
+		for (int y = 0; y < res.length; y++) {
+			for (int x = 0; x < res.length; x++) {
+				System.out.print(res[y][x] + "\t");
+			}
+			System.out.println();
+		}
+	}
+
+	public static void print(MemoList mlist) {
+		Memo memo = mlist.head;
+		while (memo != null) {
+			System.out.println(memo.mid + " " + memo.str[0]);
+			memo = memo.next;
+		}
+	}
 
 	static MemoList mlist = null;
 	static Memo mtable[] = null;
@@ -60,13 +137,15 @@ public class UserSolution {
 	public static void getscreencontext(int y, int x, char res[][]) {
 		for (int ry = y; ry < y + 5; ry++) {
 			for (int rx = x; rx < x + 5; rx++) {
-				res[ry][rx] = 0;
+				res[ry - y][rx - x] = 0;
 				Memo memo = mlist.head;
 				while (memo != null) {
 					if (memo.contains(ry, rx)) {
 						int ich = memo.getchar(ry, rx);
-						if (ich != -1)
-							res[ry][rx] = (char) ich;
+						if (ich != -1) {
+							res[ry - y][rx - x] = (char) ich;
+							break;
+						}
 					}
 					memo = memo.next;
 				}
@@ -138,7 +217,7 @@ class Memo {
 			return -1;
 
 		int yy = y - this.y;
-		int xx = x - this.y;
+		int xx = x - this.x;
 
 		int index = yy * this.width + xx;
 
