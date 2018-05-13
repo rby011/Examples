@@ -1,6 +1,7 @@
 package certi.blockchain0512;
 
 import java.util.HashSet;
+import java.util.Iterator;
 
 public class TCGenerator {
 	/**
@@ -20,52 +21,17 @@ public class TCGenerator {
 
 	static int seed = 12345;
 
-	static int pseudo_rand(int max) {
+	private static int pseudo_rand(int max) {
 		seed = (int) (((long) seed * 1103515245 + 12345) & 0xFFFF);
 		return seed % max;
 	}
 
-	public static int generateBlkImageN() {
-		int n = pseudo_rand(MAX_BLOCK_IMG_N);
-		if (n == 0)
-			return 2;
-		return n;
-	}
-
-	public static int generateRandom() {
-		return pseudo_rand((int) Math.pow(2, 15));
-	}
-
-	public static int generateTransN() {
-		return pseudo_rand(MAX_TRANS_N);
-	}
-
-	public static int generateTransID(int transN) {
-		return pseudo_rand(transN + transN / 2);
-	}
-
-	public static int generateTransAmt() {
-		return pseudo_rand((int) Math.pow(2, 23));
-	}
-
-	public static int generateBlockN() {
-		int n = pseudo_rand(MAX_BLOCK_N);
-		return n == 0 ? 1 : n;
-	}
-
-	public static int calcHash(int block[]) {
-		int hash = 1;
-		for (int i = 0; i < block.length; i++) {
-			hash = hash * 32 + block[i];
-		}
-		return hash;
-	}
-
-	public static int[] generateOneBlockWithoutHash() {
-
+	private static int[] generateIBlock() {
 		int chunk[] = null;
-		int random = generateRandom();
-		int transN = generateTransN();
+		int random = pseudo_rand((int) Math.pow(2, 15));
+		int transN = pseudo_rand(MAX_TRANS_N);
+		if (transN == 0)
+			transN = 1;
 
 		int nchunk = 1 + 1 + transN;
 		int cidx = 1;
@@ -74,122 +40,198 @@ public class TCGenerator {
 
 		HashSet<Integer> set = new HashSet<Integer>();
 		for (int n = 0; n < transN; n++, cidx++) {
-			int transID = generateTransID(transN);
+			int transID = pseudo_rand(transN + transN / 2);
 			while (set.contains(transID)) {
-				transID = generateTransID(transN);
+				transID = pseudo_rand(transN + transN / 2);
 			}
 			set.add(transID);
-			int transAmt = generateTransN();
+			int transAmt = pseudo_rand((int) Math.pow(2, 23));
 			chunk[cidx] = (transID << 24 | transAmt);
 		}
 
 		return chunk;
 	}
 
-	public static String convertToString(int integers[]) {
-		StringBuffer sbuf = new StringBuffer();
+	private static int generateHierarchy(Block blocks[]) {
+		if (blocks.length == 1)
+			return 0;
 
-		for (int i = 0; i < integers.length; i++) {
-			int integer = integers[i];
-			for (int r = 0; r < 4; r++) {
-				int chunk = (integer >> (24 - r * 8)) & 0xff;
-				String chunk_str = Integer.toHexString(chunk);
+		HashSet<Integer> set = new HashSet<Integer>();
+		for (int i = 0; i < blocks.length; i++)
+			set.add(i);
 
-				if (chunk_str.length() > 2) {
-					System.out.println("ERROR!!!");
-					System.exit(-1);
-				}
+		int blkN = blocks.length, madeN = 0;
+		boolean made[] = new boolean[blkN];
+		int ridx = pseudo_rand(blkN - 1);
+		blocks[ridx].setParentHash(0);
+		made[ridx] = true;
+		madeN++;
 
-				sbuf.append(chunk_str);
-				sbuf.append(" ");
-			}
-		}
+		set.remove(ridx);
 
-		return sbuf.toString().trim();
-	}
-
-	public static BlockImage generateOneBlockImage() {
-		BlockImage bimage = null;
-
-		// GENRERATE BLOCK COUNT
-		int bidx = 0, blockN = generateBlockN();
-		Block bidx_table[] = new Block[blockN];
-		int added = 0;
-		boolean addedToParent[] = new boolean[blockN];
-
-		// GENERATE BLOCK
-		for (int i = 0; i < blockN; i++) {
-			int iblock[] = generateOneBlockWithoutHash();
-			Block block = new Block(bidx, iblock);
-			bidx_table[bidx] = block;
-			bidx++;
-		}
-
-		// ROOT BLOCK
-		int rbidx = pseudo_rand(blockN);
-		bidx_table[rbidx].setParentHash(0);
-		addedToParent[rbidx] = true;
-		added = 1;
-
-		bimage = new BlockImage(bidx_table, rbidx);
-
-		int pidx = rbidx;
-		while (added < blockN) {
-			int pHash = calcHash(bidx_table[pidx].iblock);
-
-			// SLECT CHILDS FROM NOT-YET ADDED SET ADD THEM
-			int childN = pseudo_rand(blockN - added);
+		int pidx = ridx;
+		while (madeN < blkN) {
+			int phash = blocks[pidx].hash;
+			// SET NUMBER OF CHILDS
+			int childN = pseudo_rand(MAX_CHILD > blkN - madeN ? blkN - madeN : MAX_CHILD);
 			if (childN == 0)
 				childN = 1;
 
-			HashSet<Integer> set = new HashSet<Integer>();
-			for (int c = 0; c < childN; c++) {
-				int cbidx = 0, iterN = 0;
-				while (true) {
-					cbidx = pseudo_rand(blockN);
-					iterN++;
-					if (!set.contains(cbidx) && !addedToParent[cbidx] && iterN < 1000 && cbidx != pidx)
+			// ADD CHILDS TO SELCTED PARENT
+			for (int i = 0; i < childN && madeN < blkN; i++) {
+				int iter = 0, cidx = 0;
+				while (iter < 1000) {
+					cidx = pseudo_rand(blkN - 1);
+					if (!made[cidx] && cidx != pidx)
 						break;
+					iter++;
 				}
 
-				if (iterN == 1000)
-					break;
-
-				// ADD CHILD INTO PARENT
-				if (bidx_table[pidx].addChild(bidx_table[cbidx])) {
-					// SET PARENT HASH TO CHILD
-					bidx_table[cbidx].setParentHash(pHash);
-					added++;
-					addedToParent[cbidx] = true;
+				if (iter == 1000) {
+					Iterator<Integer> iteration = set.iterator();
+					while (iteration.hasNext() && i < childN) {
+						cidx = iteration.next();
+						blocks[cidx].setParentHash(phash);
+						made[cidx] = true;
+						madeN++;
+						blocks[pidx].addChild(blocks[cidx]);
+						i++;
+						set.remove(cidx);
+					}
+				} else {
+					blocks[cidx].setParentHash(phash);
+					made[cidx] = true;
+					madeN++;
+					blocks[pidx].addChild(blocks[cidx]);
+					i++;
+					set.remove(cidx);
 				}
 			}
 
-			// SELECT PARENT FROM ALREADY ADDED SET
-			if (added < blockN) {
-				int tpidx = pseudo_rand(blockN);
-				while (!addedToParent[tpidx]) {
-					tpidx = pseudo_rand(blockN);
-				}
+			// SELECT A NODE AS PARENT FROM ALREADY MADE NODES
+			if (madeN < blkN) {
+				int tpidx = pseudo_rand(blkN - 1);
+				while (!made[tpidx])
+					tpidx = pseudo_rand(blkN - 1);
 				pidx = tpidx;
 			}
 		}
 
-		return bimage;
+		return ridx;
 	}
 
-	public static void main(String args[]) {
-		int blkimgN = generateBlkImageN();
+	public static BlockImage[] generateBlockImages() {
+		int totalblkN = 0, minblkN = Integer.MAX_VALUE;
+		int blkimgN = pseudo_rand(MAX_BLOCK_IMG_N);
+		if (blkimgN == 0)
+			blkimgN = 1;
+		int blkNs[] = new int[blkimgN];
 		BlockImage bimages[] = new BlockImage[blkimgN];
 
 		for (int i = 0; i < blkimgN; i++) {
-			BlockImage bimage = generateOneBlockImage();
-			bimages[i] = bimage;
+			int n = pseudo_rand(MAX_BLOCK_N);
+			if (n == 0)
+				n = 1;
+			blkNs[i] = n;
+			totalblkN = totalblkN + n;
+			if (n < minblkN)
+				minblkN = n;
 		}
+
+		int iblocks[][] = new int[totalblkN][];
+		for (int i = 0; i < totalblkN; i++) {
+			iblocks[i] = generateIBlock();
+		}
+
+		int dupN = 0, dpn = 0;
+		boolean preadded[] = new boolean[totalblkN];
+		HashSet<Integer> preset = null;
+
+		for (int i = 0; i < blkimgN; i++) {
+			Block blocks[] = new Block[blkNs[i]];
+			boolean curadded[] = new boolean[totalblkN];
+
+			HashSet<Integer> curset = new HashSet<Integer>();
+
+			for (int j = 0; j < blkNs[i]; j++) {
+				int bidx = 0, iterN = 0;
+
+				// TRY RANDOM
+				while (iterN < 1000) {
+					bidx = pseudo_rand(totalblkN);
+					iterN++;
+					if (dpn < dupN) {
+						if (!curadded[bidx] && preadded[bidx]) {
+							dpn++;
+							break;
+						}
+					} else {
+						if (!curadded[bidx])
+							break;
+					}
+				}
+
+				// JUST SEQUENTIAL, NOT RANDOM
+				if (iterN == 1000) {
+					if (dpn < dupN) {
+						for (int t = 0; t < totalblkN && j < blkNs[i] && dpn < dupN; t++) {
+							if (!curset.contains(t)) {
+								if (preset.contains(t)) {
+									bidx = t;
+									curset.add(bidx);
+									curadded[bidx] = true;
+									blocks[j] = new Block(j, iblocks[bidx]);
+									j++;
+									dpn++;
+								}
+							}
+						}
+					} else {
+						for (int t = 0; t < totalblkN && j < blkNs[i]; t++) {
+							if (!curset.contains(t)) {
+								bidx = t;
+								curset.add(bidx);
+								curadded[bidx] = true;
+								blocks[j] = new Block(j, iblocks[bidx]);
+								j++;
+							}
+						}
+					}
+				} else {
+					curset.add(bidx);
+					curadded[bidx] = true;
+					blocks[j] = new Block(j, iblocks[bidx]);
+				}
+			}
+
+			if (i != 0) {
+				dpn = 0;
+				for (int c = 0; c < curadded.length; c++) {
+					if (curadded[c])
+						preadded[c] = true;
+				}
+				preset = curset;
+				dupN = pseudo_rand(minblkN);
+				if (dupN == 0) {
+					dupN = minblkN / 2;
+				}
+			}
+
+			int ridx = generateHierarchy(blocks);
+			bimages[i] = new BlockImage(blocks, ridx);
+		}
+
+		return bimages;
+	}
+
+	public static void main(String args[]) {
+		
+		BlockImage bimages[] = generateBlockImages();
 
 		if (!validateBlockUniqueness(bimages))
 			System.exit(-1);
 
-		for (int i = 0; i < blkimgN; i++) {
+		for (int i = 0; i < bimages.length; i++) {
 			BlockImage bimage = bimages[i];
 			System.out.println("[BLOCK IMAGE - " + i + "]");
 			System.out.println("# TREE STRUCTURE : ");
@@ -201,7 +243,6 @@ public class TCGenerator {
 			System.out.println();
 			System.out.println();
 		}
-
 	}
 
 	public static boolean validateBlockUniqueness(BlockImage images[]) {
@@ -212,9 +253,12 @@ public class TCGenerator {
 				for (int ii = 0; ii < images.length; ii++) {
 					for (int bb = 0; bb < images[ii].blocks.length && !(i == ii && b == bb); bb++) {
 						Block bblock = images[ii].blocks[bb];
-						if (ablock.equalToByContent(bblock))
-							if (!ablock.equalToByHash(bblock))
+						if (ablock.equalToByHash(bblock)) {
+							if (!ablock.equalToByContent(bblock))
 								return false;
+							else
+								System.out.println(">>>>> EQUALS : " + i + "," + b + "=" + ii + "," + bb);
+						}
 					}
 				}
 			}
@@ -273,10 +317,11 @@ class BlockImage {
 		if (node.childN == 0)
 			return;
 
-		System.out.println(node.id + " (parenthash : " + node.getHash() + ")");
+		System.out.println(node.id + " (parenthash : " + node.parenthash + ", hash : " + node.hash + ")");
 		System.out.println("childs : ");
 		for (int i = 0; i < node.childN; i++)
-			System.out.println("- " + node.childs[i].id + "(parenthash : " + node.childs[i].getHash() + ")");
+			System.out.println("- " + node.childs[i].id + "(parenthash : " + node.childs[i].parenthash + ", hash : "
+					+ node.childs[i].hash + ")");
 		System.out.println();
 
 		for (int i = 0; i < node.childN; i++)
@@ -288,8 +333,7 @@ class BlockImage {
 class Block {
 	final int MAX_CHILD = TCGenerator.MAX_CHILD;
 
-	int id;
-	int hash;
+	int id = -1, hash = -1, parenthash = -1;
 	int iblock[];
 
 	Block next;
@@ -300,7 +344,7 @@ class Block {
 	public Block(int id, int block[]) {
 		this.id = id;
 		this.iblock = block;
-		this.hash = this.calcHash();
+		this.parenthash = iblock[0];
 	}
 
 	public boolean addChild(Block child) {
@@ -324,6 +368,8 @@ class Block {
 
 	public void setParentHash(int hash) {
 		this.iblock[0] = hash;
+		this.parenthash = hash;
+		this.hash = calcHash();
 	}
 
 	public boolean equalToByContent(Block oblock) {
