@@ -179,9 +179,18 @@ public class TCGenerator {
 
 	public static void main(String args[]) {
 		int blkimgN = generateBlkImageN();
+		BlockImage bimages[] = new BlockImage[blkimgN];
 
 		for (int i = 0; i < blkimgN; i++) {
 			BlockImage bimage = generateOneBlockImage();
+			bimages[i] = bimage;
+		}
+
+		if (!validateBlockUniqueness(bimages))
+			System.exit(-1);
+
+		for (int i = 0; i < blkimgN; i++) {
+			BlockImage bimage = bimages[i];
 			System.out.println("[BLOCK IMAGE - " + i + "]");
 			System.out.println("# TREE STRUCTURE : ");
 			bimage.printTree();
@@ -193,6 +202,24 @@ public class TCGenerator {
 			System.out.println();
 		}
 
+	}
+
+	public static boolean validateBlockUniqueness(BlockImage images[]) {
+		for (int i = 0; i < images.length; i++) {
+			Block blocks[] = images[i].blocks;
+			for (int b = 0; b < blocks.length; b++) {
+				Block ablock = blocks[b];
+				for (int ii = 0; ii < images.length; ii++) {
+					for (int bb = 0; bb < images[ii].blocks.length && !(i == ii && b == bb); bb++) {
+						Block bblock = images[ii].blocks[bb];
+						if (ablock.equalToByContent(bblock))
+							if (!ablock.equalToByHash(bblock))
+								return false;
+					}
+				}
+			}
+		}
+		return true;
 	}
 
 }
@@ -262,6 +289,7 @@ class Block {
 	final int MAX_CHILD = TCGenerator.MAX_CHILD;
 
 	int id;
+	int hash;
 	int iblock[];
 
 	Block next;
@@ -272,6 +300,7 @@ class Block {
 	public Block(int id, int block[]) {
 		this.id = id;
 		this.iblock = block;
+		this.hash = this.calcHash();
 	}
 
 	public boolean addChild(Block child) {
@@ -283,6 +312,14 @@ class Block {
 
 		childs[childN++] = child;
 		return true;
+	}
+
+	private int calcHash() {
+		int hash = 1;
+		for (int i = 0; i < iblock.length; i++) {
+			hash = hash * 32 + iblock[i];
+		}
+		return hash;
 	}
 
 	public void setParentHash(int hash) {
@@ -299,7 +336,7 @@ class Block {
 	}
 
 	public boolean equalToByHash(Block oblock) {
-		return this.getHash() == oblock.getHash();
+		return this.hash == oblock.hash;
 	}
 
 	public int getTransN() {
@@ -338,6 +375,7 @@ class Block {
 		StringBuffer sbuf = new StringBuffer();
 		System.out.println("<Block ID : " + this.id + ">");
 		System.out.println("* Parent Hash : " + this.getHash());
+		System.out.println("* Hash : " + this.hash);
 		System.out.println("* Random : " + this.getRandom());
 		System.out.println("* TransN : " + this.getTransN());
 		for (int i = 0; i < this.getTransN(); i++) {
