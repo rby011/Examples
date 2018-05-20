@@ -4,22 +4,24 @@ import certi.blockchain0512.gen.BlockChainGenerator;
 
 public class UserSolution {
 	static final int MAX_BLOCK_N = BlockChainGenerator.MAX_BLOCK_N;
-	static final int MAX_CAPACITY = MAX_BLOCK_N;// PRIME NUMBER AROUND MAX_BLOCK_N
+	static final int MAX_CAPACITY = 10141;// PRIME NUMBER AROUND MAX_BLOCK_N
 
-	static Hashtable blockTable[] = null;
+	static BlockTable blockTable[] = null;
 	static Block bidxTable[][] = null;
 	static int bcnt[] = null;
 	static int nserver = 0;
 
+	static BlockTable globalTable = null;
+
 	public static void syncBlock(int S, char[][] blockimage) {
 		nserver = S;
 
-		blockTable = new Hashtable[S];
+		blockTable = new BlockTable[S];
 		bidxTable = new Block[S][];
 		bcnt = new int[S];
 
 		for (int s = 0; s < S; s++) {
-			blockTable[s] = new Hashtable(MAX_CAPACITY);
+			blockTable[s] = new BlockTable(MAX_CAPACITY);
 			bidxTable[s] = new Block[MAX_CAPACITY];
 			bcnt[s] = 0;
 
@@ -32,7 +34,7 @@ public class UserSolution {
 	}
 
 	public static int calcAmount(int hash, int id) {
-		int found = 0;
+		int found = 0, limit = (nserver / 2) + 1;
 		Block roots[] = new Block[nserver];
 
 		// 1. CHECK ROOT
@@ -43,34 +45,31 @@ public class UserSolution {
 				found++;
 			}
 		}
-		if (found < (nserver / 2 + 1))
+		if (found < limit)
 			return 0;
 
-		// 2. FIND MINIMUM CHILD TREE
-		Block minroot = null;
-		int MIN = Integer.MAX_VALUE;
-		for (int s = 0; s < nserver; s++) {
-			if (roots[s] != null) {
-				if (roots[s].nchild < MIN) {
-					minroot = roots[s];
-					MIN = minroot.nchild;
-				}
-			}
-		}
+		globalTable = new BlockTable(MAX_CAPACITY);
 
-		// 3. ACCUMLATE AMOUNT WITH THE ID
 		total = 0;
-		trasTraverse(minroot, id);
+		for (int s = 0; s < nserver; s++) {
+			if (roots[s] != null)
+				trasTraverse(roots[s], id, limit);
+		}
 
 		return total;
 	}
 
 	static int total = 0;
 
-	public static void trasTraverse(Block node, int tid) {
-		total = total + getTranAmount(node.hash, tid);
-		for (int i = 0; i < node.nchild; i++)
-			trasTraverse(node.childs[i], tid);
+	public static void trasTraverse(Block node, int tid, int limit) {
+		globalTable.put(node);
+		if (node.nexist >= limit) {
+			Block block = globalTable.get(node.hash);
+			total = total + block.tidx2amt[tid];
+		}
+
+		for (int i = 0; i < node.nchild; i++) 
+			trasTraverse(node.childs[i], tid, limit);
 	}
 
 	public static int getTranAmount(int hash, int tid) {
@@ -191,11 +190,11 @@ public class UserSolution {
 
 }
 
-class Hashtable {
+class BlockTable {
 	BlockList htable[] = null;
 	int capacity;
 
-	public Hashtable(int capacity) {
+	public BlockTable(int capacity) {
 		this.htable = new BlockList[capacity];
 		this.capacity = capacity;
 	}
@@ -206,6 +205,25 @@ class Hashtable {
 		if (htable[idx] == null)
 			htable[idx] = new BlockList();
 
+		htable[idx].addBlockToHead(block);
+	}
+
+	public void putWithExistCheck(Block block) {
+		int idx = toindex(block.hash);
+
+		if (htable[idx] == null)
+			htable[idx] = new BlockList();
+
+		Block rblock = htable[idx].head;
+		while (rblock != null) {
+			if (rblock.hash == block.hash) {
+				rblock.nexist++;
+				return;
+			}
+			rblock = rblock.next;
+		}
+
+		block.nexist++;
 		htable[idx].addBlockToHead(block);
 	}
 
@@ -262,6 +280,8 @@ class Block {
 	Block childs[] = null;
 
 	Block next;// for hashtable
+
+	int nexist = 0;
 
 	public Block(int id, int hash, int phash, int trans[]) {
 		this.id = id;
