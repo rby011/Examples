@@ -29,14 +29,14 @@ public class Hashtable {
 
 	public void put(char key[], int id) {
 		int index = toindex(key);
-
+		
 		// NEW FOR THIS INDEX : MOST FREQUENT CASE
 		if (table[index].head == null) {
 			table[index].addItemToHead(new Item(id, key));
 			return;
 		}
 
-		// ADD ITEM WITH SAME KEY
+		// ADD ITEM WITH THE SAME KEY TO CORESSPONDING LIST
 		ItemList col_list = table[index];
 		ItemList p_col_list = null;
 		while (col_list != null) {

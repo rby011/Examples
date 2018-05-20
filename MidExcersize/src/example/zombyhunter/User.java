@@ -25,7 +25,7 @@ public class User {
 		zbcoordtable = new Zomby[map_size][map_size];
 		zbidxtable = new Zomby[map_size * map_size];
 		tgcoord = new int[map_size * 2 + (map_size - 2) * 2][2];
-		mxpshotque = new MxShotQueue(map_size * 2 + (map_size - 2) * 2);
+		mxpshotque = new MxShotQueue(zbidxtable);
 
 		/**
 		 * EXTRACT HUNTER'S & ZOMBY'S COORDINATE
@@ -141,6 +141,17 @@ public class User {
 	}
 
 	public static int getScore(int size, int map[][], int shot[][]) {
+		int sidx = 0;
+		while (!mxpshotque.isempty() && sidx < shot.length) {
+			Shot mxshot = mxpshotque.dequeue();
+			shot[sidx][X] = mxshot.tg_x;
+			shot[sidx][Y] = mxshot.tg_y;
+			sidx++;
+		}
+
+		int zbcnt = mxpshotque.size;
+		int rshot = shot.length - sidx;
+		
 		return 0;
 	}
 
@@ -164,17 +175,21 @@ public class User {
 
 class MxShotQueue {
 	Shot max;
-	Shot shottable[] = null;
 	int size = 0;
 
-	MxShotQueue(int capacity) {
+	ShotList shotlist = null;
+	Zomby zbidxtable[] = null;
+
+	MxShotQueue(Zomby zbidxtable[]) {
 		this.max = null;
-		this.shottable = new Shot[capacity];
+		this.shotlist = new ShotList();
+		this.zbidxtable = zbidxtable;
 	}
 
 	// just keep this.max
 	public void enqueue(Shot shot) {
-		shottable[size++] = shot;
+		shotlist.addShotToHead(shot);
+		size++;
 
 		if (max == null) {
 			max = shot;
@@ -186,12 +201,130 @@ class MxShotQueue {
 
 	}
 
-	// change this.max when dequeing the max
-	public Shot dequeue() {
-
-		return this.max;
+	public boolean isempty() {
+		return this.size == 0;
 	}
 
+	// change this.max when dequeing the max
+	public Shot dequeue() {
+		Shot rmax = this.max;
+
+		// remove zbidx nodes from max shot node
+		clearzombybymaxshot();
+
+		// remove zbidx nodes from other shot node
+		clearzombyofothershots();
+
+		return rmax;
+	}
+
+	private void clearzombyofothershots() {
+		Shot snode = this.shotlist.head;
+		while (snode != null) {
+			ZbIndexList zbidxlist = snode.zidxlist;
+			if (zbidxlist != null) {
+				ZbIndex zbidxnode = zbidxlist.head;
+				while (zbidxnode != null) {
+					if (zbidxtable[zbidxnode.zbidx] == null) {
+						if (zbidxnode == zbidxlist.head) {
+							zbidxlist.head = zbidxnode.next;
+							zbidxlist.head.prev = null;
+						} else {
+							zbidxnode.prev.next = zbidxnode.next;
+							if (zbidxnode.next != null)
+								zbidxnode.next.prev = zbidxnode.prev;
+						}
+						snode.zcnt--;
+					}
+					zbidxnode = zbidxnode.next;
+				}
+			} else {
+				// error!
+			}
+
+			// remove snode from this.shotlist when the zomby count of snode is zero
+			if (snode.zcnt == 0) {
+				if (snode == this.shotlist.head) {
+					shotlist.head = snode.next;
+					shotlist.head.prev = null;
+				} else {
+					snode.prev.next = snode.next;
+					if (snode.next != null)
+						snode.next.prev = snode.prev;
+				}
+				this.size--;
+			}
+
+			if (snode.zcnt > this.max.zcnt)
+				this.max = snode;
+
+			snode = snode.next;
+		}
+
+	}
+
+	private void clearzombybymaxshot() {
+		if (max == null)
+			return;
+
+		if (max.zidxlist == null)
+			return;
+
+		ZbIndex zbidx_node = max.zidxlist.head;
+		ZbIndex pzbidx_node = null;
+		while (zbidx_node != null) {
+			Zomby zbnode = this.zbidxtable[zbidx_node.zbidx];
+			if (zbnode != null) {
+				zbnode.hp -= 10;
+			} else {
+				// error!!!
+			}
+			if (zbnode.hp == 0) {
+				// remove zbidx node from the index table
+				this.zbidxtable[zbidx_node.zbidx] = null;
+
+				// remove zbidx node from this shot
+				if (pzbidx_node != null) {
+					pzbidx_node.next = zbidx_node.next;
+				} else {
+					max.zidxlist.head = zbidx_node.next;
+				}
+
+				max.zcnt -= 1;
+			}
+			pzbidx_node = zbidx_node;
+			zbidx_node = zbidx_node.next;
+		}
+
+		if (max.zcnt == 0) {
+			if (max == shotlist.head) {
+				shotlist.head = max.next;
+			} else {
+				max.prev.next = max.next;
+				max.next.prev = max.prev;
+			}
+			this.size--;
+		}
+
+	}
+
+}
+
+class ShotList {
+	Shot head;
+
+	public void addShotToHead(Shot shot) {
+		if (head == shot) {
+			this.head = shot;
+			return;
+		}
+
+		shot.next = this.head;
+		this.head.prev = shot;
+
+		this.head.prev = null;
+		this.head = shot;
+	}
 }
 
 class Shot {
@@ -199,6 +332,9 @@ class Shot {
 	int zcnt;
 
 	ZbIndexList zidxlist;
+
+	Shot next;
+	Shot prev;
 
 	public Shot(int y, int x) {
 		this.tg_y = y;
@@ -220,14 +356,18 @@ class ZbIndexList {
 			this.head = zbidx;
 			return;
 		}
+
 		zbidx.next = head;
+		head.prev = zbidx;
 		head = zbidx;
 	}
 }
 
 class ZbIndex {
 	int zbidx;
+
 	ZbIndex next;
+	ZbIndex prev;
 
 	ZbIndex(int zbidx) {
 		this.zbidx = zbidx;

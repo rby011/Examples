@@ -51,32 +51,32 @@ public class User {
 	}
 
 	static void restore(char errcode[], char prediction[]) {
-		if (addr_table.get(errcode) == null) {
-			try_restore(errcode, prediction, 0);
-		} else {// 이미 유효 주소 목록에 포함된 것이라면
-			prediction = errcode;
-			for (int i = 0; i < prediction.length; i++)
-				prediction[i] = errcode[i];
-		}
+//		if (addr_table.get(errcode) == null) {
+//			try_restore(errcode, prediction, 0);
+//		} else {// 이미 유효 주소 목록에 포함된 것이라면
+//			prediction = errcode;
+//			for (int i = 0; i < prediction.length; i++)
+//				prediction[i] = errcode[i];
+//		}
 	}
 
 	static boolean try_restore(char errcode[], char predcode[], int depth) {
-		if (depth == 6) {
-			if (addr_table.get(predcode) != null)
-				return true;
-			else
-				return false;
-		}
-
-		char ec = errcode[depth];
-		for (int i = ALLOWED_MIN_CHAR; i <= ALLOWED_MAX_CHAR; i++) {
-			if (err_map[ec][i]) {
-				predcode[depth] = (char) i;
-				boolean ret = try_restore(errcode, predcode, depth + 1);
-				if (ret)
-					return true;
-			}
-		}
+//		if (depth == 6) {
+//			if (addr_table.get(predcode) != null)
+//				return true;
+//			else
+//				return false;
+//		}
+//
+//		char ec = errcode[depth];
+//		for (int i = ALLOWED_MIN_CHAR; i <= ALLOWED_MAX_CHAR; i++) {
+//			if (err_map[ec][i]) {
+//				predcode[depth] = (char) i;
+//				boolean ret = try_restore(errcode, predcode, depth + 1);
+//				if (ret)
+//					return true;
+//			}
+//		}
 
 		return false;
 	}

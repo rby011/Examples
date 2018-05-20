@@ -78,8 +78,6 @@ public class User {
 				member = members[1];
 			}
 			
-			
-			
 		}
 		return 0;
 	}

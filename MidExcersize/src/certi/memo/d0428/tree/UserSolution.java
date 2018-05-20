@@ -44,9 +44,11 @@ public class UserSolution {
 		}
 
 		solution.move(3, 2, 5);
-		solution.move(10, 6, 6);
-		solution.move(9, 6, 5);
-		
+		// solution.move(10, 6, 6);
+		// solution.move(9, 6, 5);
+		// solution.move(5, 5, 5);
+		// solution.getMemo(3, 2);
+		solution.getScreenContext(2, 8, null);
 		scan.close();
 
 		// solution.create(0, y, x, height, width, str);
@@ -151,8 +153,28 @@ public class UserSolution {
 
 		// 3. 신규 RegionIndex 추가, 제일 위로 보여함.
 		if (modified) {
-			rtree.addRegionIndex(mid, r_table[mid]);
-			r_table[mid].z = RegionIndexTreeList.DEFAULT_Z_ORDER - 1;
+			boolean added = false;
+			// 2. OTHER CASES
+			RegionIndexTree r_tree = rtree_list.head;
+			while (r_tree != null) {
+				added = r_tree.addRegionIndex(mid, r_table[mid]);
+				if (!added) {
+					r_tree = r_tree.next;
+				} else {
+					break;
+				}
+			}
+			// 3. ADD ADDITIONAL Z-LAYER
+			if (!added) {
+				RegionIndexTree nr_tree = new RegionIndexTree(this.r_table);
+				added = nr_tree.addRegionIndex(mid, r_table[mid]);
+				if (added) {
+					rtree_list.addMemoTreeToHead(nr_tree);
+				} else {
+					// error!!
+				}
+			}
+
 		} else {
 			// error!
 		}
@@ -193,8 +215,28 @@ public class UserSolution {
 
 		// 3. 신규 RegionIndex 추가, 제일 위로 보여함.
 		if (modified) {
-			rtree.addRegionIndex(mid, r_table[mid]);
-			r_table[mid].z = RegionIndexTreeList.DEFAULT_Z_ORDER - 1;
+			boolean added = false;
+			// 2. OTHER CASES
+			RegionIndexTree r_tree = rtree_list.head;
+			while (r_tree != null) {
+				added = r_tree.addRegionIndex(mid, r_table[mid]);
+				if (!added) {
+					r_tree = r_tree.next;
+				} else {
+					break;
+				}
+			}
+			// 3. ADD ADDITIONAL Z-LAYER
+			if (!added) {
+				RegionIndexTree nr_tree = new RegionIndexTree(this.r_table);
+				added = nr_tree.addRegionIndex(mid, r_table[mid]);
+				if (added) {
+					rtree_list.addMemoTreeToHead(nr_tree);
+				} else {
+					// error!!
+				}
+			}
+
 		} else {
 			// error!
 		}
@@ -202,6 +244,53 @@ public class UserSolution {
 
 	public void getScreenContext(int y, int x, char res[][]) {
 
+		for (int ry = y; ry < y + 5; ry++) {
+			for (int rx = x; rx < x + 5; rx++) {
+				int max = Integer.MIN_VALUE;
+				Memo maxmemo = null;
+
+				RegionIndexTree ridxtree = rtree_list.head;
+				while (ridxtree != null) {
+					RegionIndex ridx = ridxtree.findRegionIndex(ry, rx);
+					if (ridx != null) {
+						if (r_table[ridx.rid] instanceof Memo) {
+							Memo memo = (Memo) r_table[ridx.rid];
+							if (memo.z > max) {
+								max = memo.z;
+								maxmemo = memo;
+							}
+							// System.out.println(memo.str[0] + ":" + memo.z);
+						} else {
+							// System.out.println("is not memo");
+						}
+					} else {
+						// System.out.println("null");
+					}
+					ridxtree = ridxtree.next;
+				}
+				System.out.print (maxmemo != null ? maxmemo.str[0] : "X");
+				//System.out.print ("max : " + maxmemo != null ? maxmemo.str[0] : "X");
+			}
+			System.out.println();
+		}
+	}
+
+	public void getMemo(int y, int x) {
+		RegionIndexTree ridxtree = rtree_list.head;
+		while (ridxtree != null) {
+			RegionIndex ridx = ridxtree.findRegionIndex(y, x);
+			if (ridx != null) {
+				if (r_table[ridx.rid] instanceof Memo) {
+					Memo memo = (Memo) r_table[ridx.rid];
+					System.out.println(memo.str[0] + ":" + memo.z);
+				} else {
+					System.out.println("is not memo");
+				}
+			} else {
+				System.out.println("null");
+			}
+			ridxtree = ridxtree.next;
+		}
 	}
 }
 
@@ -247,7 +336,8 @@ class RegionIndexTree {
 		return false;
 	}
 
-	RegionIndex pridx = null;
+	private RegionIndex pridx = null;
+
 	public boolean removeRegionIndex(int rid) {
 		RegionIndex tpridx = pridx;
 		RegionIndex ridx = findRegionIndex(rid, this.root_ridx, pridx);
@@ -266,6 +356,35 @@ class RegionIndexTree {
 		}
 
 		return false;
+	}
+
+	public RegionIndex findRegionIndex(int y, int x) {
+		return findRegionIndex(y, x, this.root_ridx);
+	}
+
+	private RegionIndex findRegionIndex(int y, int x, RegionIndex ridx) {
+		Region region = r_table[ridx.rid];
+		if (!ridx.haschild()) {
+			if (region != null && region.containable(y, x)) {
+				return ridx;
+			}
+		} else {
+			if (region != null && region.containable(y, x)) {
+				RegionIndex ret = null;
+				RegionIndex childridx = ridx.child_list.head;
+				while (childridx != null) {
+					ret = findRegionIndex(y, x, childridx);
+					if (ret != null)
+						break;
+					childridx = childridx.next;
+				}
+				if (ret != null)
+					return ret;
+				else
+					return ridx;
+			}
+		}
+		return null;
 	}
 
 	// in : rid , current

@@ -2,6 +2,8 @@ package certi.blockchain0512;
 
 import java.util.Scanner;
 
+import certi.blockchain0512.gen.BlockChainGenerator;
+
 /**
  * <pre>
 # block image-1
@@ -18,62 +20,76 @@ public class Solution {
 
 	static Scanner scan = null;
 
-	public static void main(String args[]) {
-		scan = new Scanner(System.in);
-		run();
-		scan.close();
-	}
-
 	public static void run() {
-		int TC = scan.nextInt();
-		int S = scan.nextInt();
-		int Q = scan.nextInt();
 
-		for (int tc = 1; tc <= TC; tc++) {
-			for (int s = 0; s < S; s++)
-				BLOCKIMG[s] = generateBlockImage();
-
-			UserSolution.syncBlock(S, BLOCKIMG);
-
-			for (int q = 0; q < Q; q++) {
-
-				int hash = 0, id = 0;
-
-				UserSolution.calcAmount(hash, id);
+		char cimages[][] = null;
+		while (true) {
+			try {
+				cimages = BlockChainGenerator.generateBlockImageString();
+			} catch (Exception e) {
 			}
-
+			if (cimages != null)
+				break;
 		}
+
+		int nimage = 0;
+		for (; nimage < cimages.length; nimage++) {
+			BLOCKIMG[nimage] = cimages[nimage];
+		}
+
+		UserSolution.syncBlock(nimage, BLOCKIMG);
 	}
 
-	// block 당 transaction 최대 14 개
-	public static int calchash(char buf[], int pos, int len) {
-		int hash = 0;
-		for (int i = pos, r = 0; i < pos + len; i = i + 4, r++) {
-			int radix = (int) Math.pow(16, r);
-			int value = 0;
-			for (int j = 0; j < 4; j++)
-				value = value | (((int) buf[i + j]) << (8 * (3 - j)));
-			hash = hash + value * radix;
-		}
-		return hash & 0xffffffff;
-	}
+	// IN ORDER TO DEBUG, DIVDE INTEGERS INTO EACH BLOCK PROPERTY
+	public static int calchash(char image[], int pos, int len) {
+		int idx = pos * 3;
+		int integers[] = null;
 
-	public static char[] generateBlockImage() {
-		String head = scan.next() + " ";
-		String line = head + scan.nextLine().trim();
-		int len = line.length();
-		int N = (len + 1) / 3;
-		char blockimage[] = new char[MAX_BLOCK_LEN];
-		for (int n = 0, i = 0; n < N && i < len; n++) {
-			char fourbit_1st = line.charAt(i++);
-			char fourbit_2nd = line.charAt(i++);
-			i++;
-			char onebyte = (char) (todecimal(fourbit_1st) << 4 | todecimal(fourbit_2nd));
-			blockimage[n] = onebyte;
-			System.out.print((int) onebyte + " ");
+		// 1. parent hash : length[4]
+		int phash = 0;
+		for (int p = 0; p < 4; p++, idx = idx + 3)
+			phash = (phash << 8 * p) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+
+		// 2. random : length[2]
+		int rand_tran = 0, rand = 0, tran = 0;
+		for (int r = 0; r < 2; r++, idx = idx + 3)
+			rand = (rand << 8 * r) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+
+		// 3. # of tran : length[2]
+		for (int n = 0; n < 2; n++, idx = idx + 3)
+			tran = (tran << 8 * n) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+		rand_tran = rand << 16 | tran;
+
+		// 4. transactions : (# of tran) x 4
+		// 4.1 tran id : length[1]
+		// 4.2 tran amt : length[3]
+		int transactions[] = new int[tran];
+		for (int t = 0; t < tran; t++) {
+			int tranid = 0, tranamt = 0;
+			tranid = todecimal(image[idx]) << 4 | todecimal(image[idx + 1]);
+			idx = idx + 3;
+			for (int a = 0; a < 3; a++, idx = idx + 3)
+				tranamt = (tranamt << 8 * a) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+			transactions[t] = tranid << 24 | tranamt;
 		}
-		System.out.println();
-		return blockimage;
+
+		/**
+		 * HASHING
+		 */
+		integers = new int[2 + tran];
+		integers[0] = phash;
+		integers[1] = rand_tran;
+		for (int i = 2; i < integers.length; i++)
+			integers[i] = transactions[i - 2];
+
+		int hashcode = 1;
+		int prime = 0;
+		for (int i = 0; i < integers.length; i++) {
+			prime = ((i + 1) * (i + 1) + (i + 1) + 41);
+			hashcode = (hashcode << 5) + integers[i] * prime;
+		}
+
+		return hashcode;
 	}
 
 	public static int todecimal(char ch) {
@@ -83,5 +99,16 @@ public class Solution {
 			return (int) (ch - '0');
 		}
 	}
-	
+
+	public static void testCalcHash() {
+		String sImage = "00 00 00 78 00 00 00 00 f9 52 00 0e cd 00 00 80 f6 00 00 8e c7 00 00 6d 0b 00 00 bf 38 00 00 69 54 00 00 e6 cc 00 00 b1 5d 00 00 9f ee 00 00 42 73 00 00 46 cb 00 00 d5 a2 00 00 f5 50 00 00 e8 b6 00 00 8b b8 86 da f3 12 14 00 04 3b 00 00 a3 bb 00 00 3f 7c 00 00 98 3c 00 00 3a b8 86 da f3 ee 88 00 06 03 00 00 b5 9f 00 00 0b 29 00 00 c6 a6 00 00 1c 2c 00 00 56 b9 00 00 40";
+		char cImage[] = sImage.toCharArray();
+		calchash(cImage, 4, 64);
+	}
+
+	public static void main(String args[]) {
+		// run();
+		testCalcHash();
+	}
+
 }

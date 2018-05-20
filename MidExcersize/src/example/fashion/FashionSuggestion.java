@@ -13,7 +13,7 @@ public class FashionSuggestion {
 
 	// FOR CATALOG DB
 	static int N, K;
-	static int itemN[] = new int[MAX_N];
+	static int itemN[] = new int[MAX_M];
 	static char code[][][] = new char[MAX_M][MAX_R][MAX_CODE];
 	static int catalog[][] = new int[MAX_N * 2][MAX_M];
 

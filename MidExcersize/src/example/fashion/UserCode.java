@@ -2,23 +2,29 @@ package example.fashion;
 
 public class UserCode {
 
-	static Hashtable itemtable[] = null;
-
 	static final int HAT_IDX = 0, TOP_IDX = 1, PNT_IDX = 2, SHO_IDX = 3, ACC_IDX = 4;
-	static final int CAPACITY = 5001;
+	static final int CAPACITY = 10001;
+
+	static Hashtable itemtable[] = null;
+	static boolean checked[] = null;
 
 	public static void init() {
 		itemtable = new Hashtable[5];
 		for (int i = 0; i < 5; i++)
 			itemtable[i] = new Hashtable(CAPACITY);
+
+		checked = new boolean[10000];
 	}
 
 	public static void addCatalog(Fashion fashion) {
-		itemtable[HAT_IDX].put(fashion.hat, fashion);
-		itemtable[TOP_IDX].put(fashion.top, fashion);
-		itemtable[PNT_IDX].put(fashion.pants, fashion);
-		itemtable[SHO_IDX].put(fashion.shoes, fashion);
-		itemtable[ACC_IDX].put(fashion.accessory, fashion);
+		
+		UFashion ufashion = new UFashion(fashion);
+		
+		// itemtable[HAT_IDX].put(fashion.hat, fashion);
+		// itemtable[TOP_IDX].put(fashion.top, fashion);
+		// itemtable[PNT_IDX].put(fashion.pants, fashion);
+		// itemtable[SHO_IDX].put(fashion.shoes, fashion);
+		// itemtable[ACC_IDX].put(fashion.accessory, fashion);
 	}
 
 	public static int newFashion(Fashion fashion) {
@@ -26,7 +32,7 @@ public class UserCode {
 	}
 
 	private static int toindex(char code[]) {
-		
+
 		return -1;
 	}
 }
@@ -52,9 +58,9 @@ class Hashtable {
 	}
 
 	// KEY : a fashion item code
-	public void put(char item[], Fashion fashion) {
+	public void put(char item[], UFashion ufashion) {
 		int idx = toindex(hashcode(item));
-		table[idx].addFashionToTail(new UFashion(fashion));
+		table[idx].addFashionToTail(ufashion);
 	}
 
 	// THE LIST MAY CONTAINS COLLAPED NODE
@@ -115,6 +121,9 @@ class UFashionList {
 }
 
 class UFashion {
+	static int ID_SEED = 0;
+
+	int fashion_id = 0;
 	Fashion fashion;
 
 	UFashion next;
@@ -128,6 +137,7 @@ class UFashion {
 
 	UFashion(Fashion fashion) {
 		this.fashion = fashion;
+		this.fashion_id = ID_SEED++;
 	}
 
 	// NEED TO OPTIMZIE WITH BIT OPERATION

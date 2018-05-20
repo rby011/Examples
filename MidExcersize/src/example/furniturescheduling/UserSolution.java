@@ -232,6 +232,8 @@ class MaxQueue {
 	Furniture tree[] = null;
 	int fidx2tidx[] = null;
 
+	boolean built = false;
+
 	public MaxQueue(int max_capacity, int max_fidx) {
 		tree = new Furniture[max_capacity + 1];
 		fidx2tidx = new int[max_fidx + 1];
@@ -245,11 +247,13 @@ class MaxQueue {
 		fidx2tidx[furniture.fid] = tidx;
 		size = size + 1;
 
+		built = false;
 		// liftup(tidx);
 	}
 
 	public Furniture dequeue(int currenttick) {
-		buildheap(currenttick);
+		if (!built)
+			buildheap(currenttick);
 
 		Furniture max = tree[R];
 
@@ -264,7 +268,8 @@ class MaxQueue {
 	}
 
 	public Furniture max(int currenttick) {
-		buildheap(currenttick);
+		if (!built)
+			buildheap(currenttick);
 		return tree[R];
 	}
 
@@ -276,6 +281,7 @@ class MaxQueue {
 		int tidx = this.size / 2;
 		for (int i = tidx; i >= 1; i--)
 			maxheapify(i, currenttick);
+		built = true;
 	}
 
 	private void maxheapify(int tidx, int currenttick) {
@@ -343,7 +349,7 @@ class Furniture {
 	}
 
 	public boolean compeletable(int currenttick) {
-		if (limit_tick  >= currenttick + make_time)
+		if (limit_tick >= currenttick + make_time)
 			return true;
 		return false;
 	}
