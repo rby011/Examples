@@ -4,7 +4,7 @@ import certi.blockchain0512.gen.BlockChainGenerator;
 
 public class UserSolution {
 	static final int MAX_BLOCK_N = BlockChainGenerator.MAX_BLOCK_N;
-	static final int MAX_CAPACITY = 10141;// PRIME NUMBER AROUND MAX_BLOCK_N
+	static final int MAX_CAPACITY = 20633;// PRIME NUMBER AROUND MAX_BLOCK_N
 
 	static BlockTable blockTable[] = null;
 	static Block bidxTable[][] = null;
@@ -12,6 +12,7 @@ public class UserSolution {
 	static int nserver = 0;
 
 	static BlockTable globalTable = null;
+	static BlockTable globalSet = null;
 
 	public static void syncBlock(int S, char[][] blockimage) {
 		nserver = S;
@@ -48,8 +49,11 @@ public class UserSolution {
 		if (found < limit)
 			return 0;
 
+		// 2. GLOBALLY ACCESSIBLE TABLE
 		globalTable = new BlockTable(MAX_CAPACITY);
+		globalSet = new BlockTable(MAX_CAPACITY);
 
+		// 3. TRAVRESE EACH ROOT
 		total = 0;
 		for (int s = 0; s < nserver; s++) {
 			if (roots[s] != null)
@@ -62,13 +66,13 @@ public class UserSolution {
 	static int total = 0;
 
 	public static void trasTraverse(Block node, int tid, int limit) {
-		globalTable.put(node);
-		if (node.nexist >= limit) {
-			Block block = globalTable.get(node.hash);
-			total = total + block.tidx2amt[tid];
+		globalTable.putWithExistCheck(node);
+		Block bnode = globalTable.get(node.hash);
+		if (bnode.nexist >= limit && globalSet.get(bnode.hash) == null) {
+			total = total + bnode.tidx2amt[tid];
+			globalSet.put(bnode);
 		}
-
-		for (int i = 0; i < node.nchild; i++) 
+		for (int i = 0; i < node.nchild; i++)
 			trasTraverse(node.childs[i], tid, limit);
 	}
 

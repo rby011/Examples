@@ -4,7 +4,7 @@ import java.util.HashSet;
 
 public class BlockChainGenerator {
 	static final int MAX_BLOCK_IMAGE_N = 5;
-	public static final int MAX_BLOCK_N = 20;
+	public static final int MAX_BLOCK_N = 20000;
 
 	static int HACK_START = 0;
 	static final float HACK_RATIO = 0.3f;
