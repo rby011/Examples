@@ -1,8 +1,10 @@
 package certi.blockchain0512;
 
+import certi.blockchain0512.gen.BlockChainGenerator;
+
 public class UserSolution {
-	static final int MAX_BLOCK_N = 10;
-	static final int MAX_CAPACITY = 11;// PRIME NUMBER AROUND MAX_BLOCK_N
+	static final int MAX_BLOCK_N = BlockChainGenerator.MAX_BLOCK_N;
+	static final int MAX_CAPACITY = MAX_BLOCK_N;// PRIME NUMBER AROUND MAX_BLOCK_N
 
 	static Hashtable blockTable[] = null;
 	static Block bidxTable[][] = null;
@@ -30,7 +32,7 @@ public class UserSolution {
 	}
 
 	public static int calcAmount(int hash, int id) {
-		int found = 0, amount = 0;
+		int found = 0;
 		Block roots[] = new Block[nserver];
 
 		// 1. CHECK ROOT
@@ -57,18 +59,18 @@ public class UserSolution {
 		}
 
 		// 3. ACCUMLATE AMOUNT WITH THE ID
-		amount = trasTraverse(minroot, id);
+		total = 0;
+		trasTraverse(minroot, id);
 
-		return amount;
+		return total;
 	}
 
-	public static int trasTraverse(Block node, int tid) {
-		int amount = getTranAmount(node.hash, tid);
+	static int total = 0;
 
+	public static void trasTraverse(Block node, int tid) {
+		total = total + getTranAmount(node.hash, tid);
 		for (int i = 0; i < node.nchild; i++)
-			amount = amount + trasTraverse(node.childs[i], tid);
-
-		return amount;
+			trasTraverse(node.childs[i], tid);
 	}
 
 	public static int getTranAmount(int hash, int tid) {
@@ -101,11 +103,7 @@ public class UserSolution {
 					System.out.println("phash : " + block.phash + ", block :" + block.hash);
 				}
 			} else {
-				try {
-					pblock.addChild(block);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				pblock.addChild(block);
 			}
 		}
 	}
@@ -115,8 +113,10 @@ public class UserSolution {
 
 		// A. IMAGE LENGTH (4 byte)
 		int ilen = 0;
-		for (int b = 0; b < 4; pos = pos + 1, idx = idx + 3, b = b + 1)
-			ilen = ilen | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+		for (int b = 0; b < 4; pos = pos + 1, idx = idx + 3, b = b + 1) {
+			int hex = (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+			ilen = ilen | hex << 8 * (3 - b);
+		}
 
 		// B. A LOOP FOR EACH BLOCK
 		int len = 0;
@@ -241,7 +241,7 @@ class BlockList {
 		}
 
 		block.next = head;
-		block = head;
+		head = block;
 	}
 }
 
@@ -280,9 +280,12 @@ class Block {
 		childs = new Block[MAX_N_CHILD];
 	}
 
-	public void addChild(Block block) throws Exception {
-		if (nchild >= MAX_N_CHILD)
-			throw new Exception("PARENT BLOCK IS FULL, TRYING TO ADD CHILD");
+	public boolean addChild(Block block) {
+		if (nchild >= MAX_N_CHILD) {
+			System.err.println("parent = " + this.hash + ", child = " + block.hash);
+			return false;
+		}
 		childs[nchild++] = block;
+		return true;
 	}
 }

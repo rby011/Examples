@@ -1,5 +1,8 @@
 package certi.blockchain0512;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.Scanner;
 
 import certi.blockchain0512.gen.BlockChainGenerator;
@@ -32,12 +35,25 @@ public class Solution {
 				break;
 		}
 
+		long stime = System.currentTimeMillis();
+
 		int nimage = 0;
 		for (; nimage < cimages.length; nimage++) {
 			BLOCKIMG[nimage] = cimages[nimage];
 		}
 
 		UserSolution.syncBlock(nimage, BLOCKIMG);
+
+		int bhash = 1149688563;
+		int btid = 4;
+
+		int amount = UserSolution.calcAmount(bhash, btid);
+
+		System.out.println("AMOUNT : " + amount + " @ hash = " + bhash + ", id = " + btid);
+
+		long etime = System.currentTimeMillis();
+
+		System.out.println(etime - stime);
 	}
 
 	// IN ORDER TO DEBUG, DIVDE INTEGERS INTO EACH BLOCK PROPERTY
@@ -47,17 +63,23 @@ public class Solution {
 
 		// 1. parent hash : length[4]
 		int phash = 0;
-		for (int p = 0; p < 4; p++, idx = idx + 3)
-			phash = (phash << 8 * p) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+		for (int p = 0; p < 4; p++, idx = idx + 3) {
+			int hex = (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+			phash = phash | hex << 8 * (3 - p);
+		}
 
 		// 2. random : length[2]
 		int rand_tran = 0, rand = 0, tran = 0;
-		for (int r = 0; r < 2; r++, idx = idx + 3)
-			rand = (rand << 8 * r) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+		for (int r = 0; r < 2; r++, idx = idx + 3) {
+			int hex = (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+			rand = rand | hex << 8 * (1 - r);
+		}
 
 		// 3. # of tran : length[2]
-		for (int n = 0; n < 2; n++, idx = idx + 3)
-			tran = (tran << 8 * n) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+		for (int n = 0; n < 2; n++, idx = idx + 3) {
+			int hex = (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+			tran = tran | hex << 8 * (1 - n);
+		}
 		rand_tran = rand << 16 | tran;
 
 		// 4. transactions : (# of tran) x 4
@@ -68,8 +90,10 @@ public class Solution {
 			int tranid = 0, tranamt = 0;
 			tranid = todecimal(image[idx]) << 4 | todecimal(image[idx + 1]);
 			idx = idx + 3;
-			for (int a = 0; a < 3; a++, idx = idx + 3)
-				tranamt = (tranamt << 8 * a) | (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+			for (int a = 0; a < 3; a++, idx = idx + 3) {
+				int hex = (todecimal(image[idx]) << 4 | todecimal(image[idx + 1]));
+				tranamt = tranamt | hex << 8 * (2 - a);
+			}
 			transactions[t] = tranid << 24 | tranamt;
 		}
 
@@ -107,8 +131,14 @@ public class Solution {
 	}
 
 	public static void main(String args[]) {
-		// run();
-		testCalcHash();
+		try {
+			System.setOut(new PrintStream(new File("./data/output.txt")));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		run();
 	}
 
 }

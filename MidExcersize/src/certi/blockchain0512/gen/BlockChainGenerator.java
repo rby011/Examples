@@ -1,8 +1,10 @@
 package certi.blockchain0512.gen;
 
+import java.util.HashSet;
+
 public class BlockChainGenerator {
-	static final int MAX_BLOCK_IMAGE_N = 3;
-	static final int MAX_BLOCK_N = 10;
+	static final int MAX_BLOCK_IMAGE_N = 5;
+	public static final int MAX_BLOCK_N = 20000;
 
 	static int HACK_START = 0;
 	static final float HACK_RATIO = 0.3f;
@@ -16,9 +18,9 @@ public class BlockChainGenerator {
 		int nimage = Random.pseudo_rand(MAX_BLOCK_IMAGE_N);
 		if (nimage < 3)
 			nimage = 3;
-		if (nimage % 2 == 0) 
+		if (nimage % 2 == 0)
 			nimage = nimage + 1;
-	
+
 		int nblock = Random.pseudo_rand(MAX_BLOCK_N);
 		if (nblock < MAX_BLOCK_N / 2)
 			nblock = MAX_BLOCK_N / 2;
@@ -33,16 +35,27 @@ public class BlockChainGenerator {
 
 		// ROOT FOR EACH IMAGE
 		Block root = Block.generateValidBlock();
-		for (int i = 0; i < images.length; i++)
-			images[i].setRoot(Block.copyBlock(root));
+		for (int i = 0; i < images.length; i++) {
+			Block toadd = Block.copyBlock(root);
+			images[i].setRoot(toadd);
+		}
+
+		// SET FOR ODD PIDX
+		HashSet<Integer> pset = new HashSet<Integer>();
 
 		int mcnt = 0, hcnt = 0;
 		for (int i = 1; i < nblock; i++) {
 			Block block = Block.generateValidBlock();
 			Block fblock = null;
 
-			// PARENT BLOCK ID
-			int pbidx = Random.pseudo_rand(i);
+			int pbidx = 0, iter = 0;
+			while (iter < 1000) {
+				// PARENT BLOCK ID
+				iter++;
+				pbidx = Random.pseudo_rand(i);
+				if (!pset.contains(pbidx))
+					break;
+			}
 
 			int miss = 1;
 			for (int j = 0; j < nimage; j++, mcnt++, hcnt++) {
@@ -61,6 +74,7 @@ public class BlockChainGenerator {
 					if (!images[j].addToParent(Block.copyBlock(fblock), pbidx)) {
 						// pbidx 가 없는 경우가 정말로 존재함. .어느 경우지?? missing 된 경우
 						System.out.println(fblock.id + " FAIL TO ADD INTO - " + pbidx + " @ IMAGE -" + j);
+						pset.add(pbidx);
 					}
 				}
 			}
@@ -142,8 +156,9 @@ class BlockImage {
 
 	public void stringTraverse(Block node, StringBuffer sbuf) {
 		sbuf.append(node.toString() + "\n");
-		for (int i = 0; i < node.childN; i++)
-			sbuf.append(node.childs[i].toString() + "\n");
+		for (int i = 0; i < node.childN; i++) {
+			stringTraverse(node.childs[i], sbuf);
+		}
 	}
 
 	public String toHexaString() throws Exception {
@@ -173,8 +188,7 @@ class BlockImage {
 		sbuf.append(" ");
 
 		for (int i = 0; i < node.childN; i++) {
-			sbuf.append(node.childs[i].toHexaString());
-			sbuf.append(" ");
+			hexaTraverse(node.childs[i], sbuf);
 		}
 	}
 
@@ -493,6 +507,7 @@ class Random {
 class Hashtable {
 	Block table[] = null;
 	int capacity = 0;
+	int size;
 
 	public Hashtable(int capacity) {
 		this.table = new Block[capacity];
@@ -510,6 +525,7 @@ class Hashtable {
 
 		if (table[idx] == null) {
 			table[idx] = block;
+			size++;
 			return true;
 		}
 
@@ -553,5 +569,4 @@ class Hashtable {
 	public int toIndex(int hashcode) {
 		return (hashcode & 0x7fffffff) % this.capacity;
 	}
-
 }
