@@ -13,7 +13,6 @@ public class UserSolution {
 
 	public static void restoreLedger(int L, char[][] ledgerData) {
 		TC++;
-		// System.out.println("* Ledger Count : " + L);
 		ltable = new Hashtable[L];
 		roots = new Node[L];
 		ledgerCnt = L;
@@ -21,11 +20,8 @@ public class UserSolution {
 		for (int l = 0; l < L; l++) {
 			ltable[l] = new Hashtable(17071);
 			Node tNodes[] = new Node[17071];
-
 			int size = ledgerData[l][0] * 16777216 + ledgerData[l][1] * 65536 + ledgerData[l][2] * 256
 					+ ledgerData[l][3];
-			// System.out.println(" - size : " + size);
-
 			int index = 4, nCnt = 0;
 			while (index < size + 4) {
 				int pos = index;
@@ -35,16 +31,11 @@ public class UserSolution {
 				int itemN = ledgerData[l][index++];
 
 				// ITEM IN A SMALL DEPT
-				Item items[] = new Item[itemN];
-				// System.out.println(" - phash randome itemN " + pHash + "\t" + random + "\t" +
-				// itemN);
+				int items[] = new int[20];
 				for (int i = 0; i < itemN; i++) {
 					int itemID = ledgerData[l][index++];
 					int amount = ledgerData[l][index++] * 256 + ledgerData[l][index++];
-
-					items[i] = new Item(itemID, amount);
-
-					// System.out.println(" --- itemID amount " + itemID + "\t" + amount);
+					items[itemID] += amount;
 				}
 
 				int len = index - pos;
@@ -54,22 +45,13 @@ public class UserSolution {
 				Node node = new Node(hash, pHash, items);
 				ltable[l].put(hash, node);
 				tNodes[nCnt++] = node;
-				// if (TC == 4)
-				// System.out.println(hash + " , " + pHash);
 			}
 
-			// if (TC == 4)
-			// for (int n = 0; n < nCnt; n++) {
-			// System.out.println(tNodes[n].hash + " , " + tNodes[n].phash);
-			// }
-
 			// BUILD HIERACHICAL-RELATIONSHIP FOR EACH LEDGER
+			roots[l] = new Node(0, 0, null);
+			ltable[l].put(0, roots[l]);
 			for (int n = 0; n < nCnt; n++) {
 				int pHash = tNodes[n].phash;
-				if (pHash == 0) {
-					roots[l] = tNodes[n];
-					continue;
-				}
 				Node pNode = ltable[l].get(pHash);
 				if (pNode != null) {
 					pNode.addChilds(tNodes[n]);
@@ -78,50 +60,95 @@ public class UserSolution {
 					// System.out.println("ERROR");
 				}
 			}
-			
-			int k=10;
-			k++;
 		}
 
+		// BUILD GLOBAL TREE
 		gltable = new Hashtable(17071);
+		root = new Node(0, 0, null);
+		gltable.put(0, root);
+		traverseForBuildTree(root);
+
 	}
 
-	public static int calcAmount(int hash, int itemid) {
-		Hashtable atable = new Hashtable(17071);
-		for (int l = 0; l < ledgerCnt; l++) {
-			Node node = ltable[l].get(hash);
-			if (node != null)
-				traverse(atable, node, itemid);
-		}
-		return atable.amount;
-	}
+	static Node root = null;
 
-	public static void traverse(Hashtable atable, Node node, int itemid) {
+	public static void traverseForBuildTree(Node node) {
 		if (node == null)
 			return;
 
 		int valid = 0;
+		Node anode = null;
 		for (int l = 0; l < ledgerCnt; l++) {
-			if (ltable[l].get(node.hash) != null) {
+			anode = ltable[l].get(node.hash);
+			if (anode != null)
 				valid++;
+		}
+		if (valid <= ledgerCnt / 2)
+			return;
+		
+		Node pnode = gltable.get(node.phash);
+		if (pnode != null) {
+			Node nnode = new Node(node.hash, node.phash, node.items);
+			pnode.addChilds(nnode);
+			gltable.put(nnode.hash, nnode);
+		}
+		
+		for (int l = 0; l < ledgerCnt; l++) {
+			anode = ltable[l].get(node.hash);
+			if (null == gltable.get(node.hash)) {
+				if (anode == null)
+					continue;
+				gltable.put(anode.hash, new Node(anode.hash, anode.phash, anode.items));
 			}
+			if (anode != null)
+				for (int c = 0; c < anode.childN; c++)
+					traverseForBuildTree(anode.childs[c]);
+		}
+	}
+
+	public static int calcAmount(int hash, int itemid) {
+		// # TIME OUT
+		// Hashtable atable = new Hashtable(17071);
+		// traverse_slow(atable, hash, itemid);
+		// return atable.amount;
+		return traverse(hash, itemid);
+	}
+
+	public static int traverse(int hash, int itemid) {
+		int amount = 0;
+		Node node = gltable.get(hash);
+		if (node != null) {
+			amount = amount + node.items[itemid];
+			for (int c = 0; c < node.childN; c++)
+				amount = amount + traverse(node.childs[c].hash, itemid);
+
+		}
+		return amount;
+	}
+
+	public static void traverse_slow(Hashtable atable, int hash, int itemid) {
+		int valid = 0;
+		int amount = 0;
+		Node node = null;
+		for (int l = 0; l < ledgerCnt; l++) {
+			node = ltable[l].get(hash);
+			if (node != null)
+				valid++;
 		}
 		if (valid <= ledgerCnt / 2)
 			return;
 
-		if (null == atable.get(node.hash)) {
-			int amount = 0;
-			for (int i = 0; i < node.items.length; i++) {
-				if (node.items[i].id == itemid) {
-					amount = node.items[i].amount;
-					break;
-				}
+		for (int l = 0; l < ledgerCnt; l++) {
+			node = ltable[l].get(hash);
+			if (null == atable.get(hash)) {
+				if (node == null)
+					continue;
+				amount = amount + node.items[itemid];
+				atable.put(new Node(hash), amount);
 			}
-			atable.put(new Node(node.hash), amount);
-		}
-
-		for (int c = 0; c < node.childN; c++) {
-			traverse(atable, node.childs[c], itemid);
+			if (node != null)
+				for (int c = 0; c < node.childN; c++)
+					traverse_slow(atable, node.childs[c].hash, itemid);
 		}
 	}
 
@@ -130,7 +157,11 @@ public class UserSolution {
 		queue.enqueue(node);
 		while (!queue.isempty()) {
 			Node vnode = queue.dequeue();
-			System.out.println(vnode.hash + "[" + vnode.phash + "]");
+			System.out.print(vnode.hash + "[" + vnode.phash + "] ");
+			for (int i = 0; i < vnode.items.length; i++)
+				if (vnode.items[i] != 0)
+					System.out.print(i + "," + vnode.items[i] + ",");
+			System.out.println();
 			for (int c = 0; c < vnode.childN; c++) {
 				queue.enqueue(vnode.childs[c]);
 			}
@@ -241,7 +272,7 @@ class NodeList {
 class Node {
 	int hash;
 	int phash;
-	Item items[] = null;
+	int items[] = null;
 	Node next;
 
 	int childN = 0;
@@ -251,16 +282,21 @@ class Node {
 		this.hash = hash;
 	}
 
-	Node(int hash, int phash, Item items[]) {
+	Node(int hash, int phash, int items[]) {
 		this.hash = hash;
 		this.phash = phash;
 		this.items = items;
 	}
 
 	public void addChilds(Node child) {
+		for (int i = 0; i < childN; i++) {
+			if (childs[i] != null) {
+				if (childs[i].hash == child.hash)
+					return;
+			}
+		}
 		childs[childN++] = child;
 	}
-
 }
 
 class Item {
