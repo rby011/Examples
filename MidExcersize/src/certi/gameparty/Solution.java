@@ -1,5 +1,7 @@
 package certi.gameparty;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.Scanner;
 
 /**
@@ -233,12 +235,6 @@ public class Solution {
 	}
 
 	static int main() {
-		// try {
-		// System.setIn(new FileInputStream("C:\\Users\\Changsun
-		// Song\\Desktop\\알고리즘자격준비\\git\\MidExcersize\\src\\certi\\gameparty\\input.txt"));
-		// } catch (FileNotFoundException e) {
-		// e.printStackTrace();
-		// }
 
 		int T = scan.nextInt();
 		;
@@ -271,27 +267,34 @@ public class Solution {
 		}
 
 		System.out.println("#total score : " + (totalScore / T));
-		
+
 		float total = 0;
 		for (int i = 0; i < UserSolution.tc; i++) {
 			System.out.println("# " + (i + 1));
 			for (int j = 0; j < 4; j++) {
-				System.out.println(UserSolution.counts[i][j] + " , " + (UserSolution.times[i][j]/1000000000f));
-				total = total + (UserSolution.times[i][j]/1000000000f);
+				System.out.println(UserSolution.counts[i][j] + " , " + (UserSolution.times[i][j] / 1000000000f));
+				total = total + (UserSolution.times[i][j] / 1000000000f);
 			}
 		}
 		System.out.println("#total time : " + total);
-		
-		System.out.println("#party table collision : " + Hashtable.collision +"/"+ Hashtable.putcall);
-		System.out.println("#member table collision : " + Hashset.collision +"/"+ Hashset.putcall);
-		
-		System.out.println("#time overhead : " + Hashtable.overhead/1000000000f);
+
+		System.out.println("#party table collision : " + Hashtable.collision + "/" + Hashtable.putcall);
+		System.out.println("#member table collision : " + Hashset.collision + "/" + Hashset.putcall);
+
+		System.out.println("#time overhead : " + Hashtable.overhead / 1000000000f);
 		return 0;
 	}
 
 	static Scanner scan = null;
 
 	public static void main(String args[]) {
+		try {
+			System.setIn(new FileInputStream(
+					"C:\\Users\\Changsun Song\\Desktop\\알고리즘자격준비\\git\\MidExcersize\\src\\certi\\gameparty\\input.txt"));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+
 		scan = new Scanner(System.in);
 		main();
 		scan.close();
